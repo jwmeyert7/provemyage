@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Circuit build artifacts (committed separately after compile)
+# circuits/age_proof/target/
+
+# OS
+.DS_Store
+Thumbs.db

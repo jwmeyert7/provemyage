@@ -1,0 +1,10 @@
+{
+  "name": "provemyage-scripts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@noir-lang/backend_barretenberg": "^0.36.0",
+    "@noir-lang/noir_js": "^0.36.0",
+    "@noir-lang/noir_wasm": "0.36.0"
+  }
+}

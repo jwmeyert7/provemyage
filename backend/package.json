@@ -1,0 +1,20 @@
+{
+  "name": "provemyage-backend",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev":   "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@noir-lang/backend_barretenberg": "0.36.0",
+    "@noir-lang/noir_js":              "0.36.0",
+    "cors":                "^2.8.5",
+    "dotenv":              "^16.4.5",
+    "express":             "^4.19.2",
+    "express-rate-limit":  "^7.3.1",
+    "ioredis":             "^5.3.2",
+    "uuid":                "^9.0.1"
+  }
+}
