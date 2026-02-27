@@ -99,18 +99,26 @@ function extractMRZ(ocrText) {
  * @returns {Promise<{birthYear, birthMonth, birthDay, nationality}>}
  */
 export async function extractBirthDateFromPassport(imageSource, onProgress) {
+  // In Tesseract.js v5 the third argument is WorkerOptions (logger, langPath, etc.).
+  // Engine parameters must be set via worker.setParameters() after creation.
   const worker = await createWorker('eng', 1, {
-    // Restrict charset to valid MRZ characters
-    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
-    tessedit_pageseg_mode: '6',    // Uniform block of text
-    load_system_dawg: '0',
-    load_freq_dawg: '0',
+    logger: m => {
+      if (onProgress && typeof m.progress === 'number') {
+        onProgress(Math.round(m.progress * 80));
+      }
+    },
   });
 
   try {
-    const result = await worker.recognize(imageSource, {}, {
-      text: true,
+    // Restrict OCR charset to valid MRZ characters for much better accuracy
+    await worker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
+      tessedit_pageseg_mode: '6',  // Uniform block of text
+      load_system_dawg: '0',
+      load_freq_dawg: '0',
     });
+
+    const result = await worker.recognize(imageSource, {}, { text: true });
 
     if (onProgress) onProgress(90);
 

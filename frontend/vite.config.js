@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   // Required for Barretenberg WASM + SharedArrayBuffer
   server: {
+    host: '127.0.0.1',
     port: 5173,
     headers: {
       'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -16,15 +17,17 @@ export default defineConfig({
     },
   },
 
-  // Vite must not pre-bundle WASM packages — they ship their own loader
+  // Let Vite pre-bundle these so esbuild converts @aztec/bb.js (a webpack CJS
+  // bundle) to proper ESM — without this the browser throws "exports is not
+  // defined" and the entire module graph fails to load.
   optimizeDeps: {
-    exclude: [
+    include: [
       '@noir-lang/backend_barretenberg',
       '@noir-lang/noir_js',
-      '@noir-lang/acvm_js',
-      '@noir-lang/noirc_abi',
-      '@noir-lang/types',
     ],
+    esbuildOptions: {
+      target: 'esnext',  // @aztec/bb.js uses top-level await
+    },
   },
 
   build: {

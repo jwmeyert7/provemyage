@@ -66,6 +66,20 @@ function initStep1() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show a thumbnail immediately so the user knows the file was received
+    const reader = new FileReader();
+    reader.onload = ev => {
+      let preview = $('passport-preview');
+      if (!preview) {
+        preview = document.createElement('img');
+        preview.id = 'passport-preview';
+        preview.style.cssText = 'width:100%;border-radius:8px;margin-top:.75rem;max-height:200px;object-fit:contain;background:#000';
+        $('passportUpload').closest('label').after(preview);
+      }
+      preview.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+
     setStatus('s1-status', 'Scanning passport MRZ… (local OCR, no upload)', 'info');
     $('s1-progress').hidden = false;
 
