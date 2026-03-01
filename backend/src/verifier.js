@@ -15,7 +15,7 @@ let noir    = null;
 async function init() {
   if (backend) return;
 
-  const artifactPath = join(__dirname, '../../circuits/age_proof/target/age_proof.json');
+  const artifactPath = join(__dirname, '../circuits/age_proof.json');
   let artifact;
   try {
     artifact = JSON.parse(readFileSync(artifactPath, 'utf-8'));

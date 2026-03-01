@@ -85,7 +85,7 @@ function extractMRZ(ocrText) {
       continue;
     }
   }
-  throw new Error('No valid MRZ found. Try a clearer passport photo — the text zone at the bottom.');
+  throw new Error('Birthdate not found. Make sure the photo shows the full MRZ strip at the bottom of the passport photo page.');
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -101,11 +101,16 @@ function extractMRZ(ocrText) {
 export async function extractBirthDateFromPassport(imageSource, onProgress) {
   // In Tesseract.js v5 the third argument is WorkerOptions (logger, langPath, etc.).
   // Engine parameters must be set via worker.setParameters() after creation.
+  // Map Tesseract phases to a monotonically increasing bar.
+  // Phase 0 (loading/init): 0–40%. Phase 1 (recognizing): 40–88%.
+  let phase = 0;
   const worker = await createWorker('eng', 1, {
     logger: m => {
-      if (onProgress && typeof m.progress === 'number') {
-        onProgress(Math.round(m.progress * 80));
-      }
+      if (!onProgress) return;
+      if (m.status === 'recognizing text') phase = 1;
+      const base  = phase === 0 ? 0  : 40;
+      const range = phase === 0 ? 40 : 48;
+      onProgress(base + Math.round((m.progress ?? 0) * range));
     },
   });
 

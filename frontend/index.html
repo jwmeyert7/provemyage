@@ -3,36 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Prove your age from a real passport using zero-knowledge cryptography — without revealing your name, birthdate, or any personal data." />
-  <title>ProveMyAge — Zero-Knowledge Age Verification</title>
+  <meta name="description" content="Prove your age from a real passport using zero-knowledge cryptography, without revealing your name, birthdate, or any personal data." />
+  <title>ProveMyAge - Zero-Knowledge Age Verification</title>
+
+  <!-- Set theme before render to avoid flash -->
+  <script>
+    (function() {
+      var stored = localStorage.getItem('theme');
+      var os = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = stored || os;
+    })();
+  </script>
 
   <style>
     /* ── Design tokens ─────────────────────────────────────────────────────── */
     :root {
-      --bg:        #f8f9fc;
+      --bg:        #f0f2f7;
       --surface:   #ffffff;
-      --text:      #1a1a2e;
-      --text-muted:#6b7280;
-      --accent:    #6c63ff;
-      --accent-dk: #5a52d5;
+      --text:      #1d2035;
+      --text-muted:#64748b;
+      --accent:    #5c6bc0;
+      --accent-dk: #4e5bb0;
       --success:   #22c55e;
       --error:     #ef4444;
       --warn:      #f59e0b;
-      --border:    #e5e7eb;
+      --border:    #dde1ec;
       --radius:    12px;
-      --shadow:    0 2px 12px rgba(0,0,0,.08);
+      --shadow:    0 1px 8px rgba(29,32,53,.08);
       --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     [data-theme="dark"] {
-      --bg:        #0f0f1a;
-      --surface:   #1a1a2e;
-      --text:      #e8e8f5;
-      --text-muted:#9ca3af;
-      --accent:    #8b7cf8;
-      --accent-dk: #7c6ef0;
-      --border:    #2d2d44;
-      --shadow:    0 2px 12px rgba(0,0,0,.4);
+      --bg:        #10121c;
+      --surface:   #181b28;
+      --text:      #dde2f0;
+      --text-muted:#8892b0;
+      --accent:    #7f8cdf;
+      --accent-dk: #6f7bd0;
+      --border:    #232638;
+      --shadow:    0 2px 14px rgba(0,0,0,.4);
     }
+
+    /* Prevent .btn and similar classes from overriding the hidden attribute */
+    [hidden] { display: none !important; }
 
     /* ── Reset ─────────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,11 +59,11 @@
     img { max-width: 100%; }
     button { cursor: pointer; font-family: inherit; }
 
-    /* ── Layout ─────────────────────────────────────────────────────────────── */
+    /* ── Layout ──────────────────────────────────────────────────────────────── */
     .app { display: flex; flex-direction: column; min-height: 100dvh; }
     .main { flex: 1; padding: 1rem; max-width: 520px; margin: 0 auto; width: 100%; }
 
-    /* ── Header ─────────────────────────────────────────────────────────────── */
+    /* ── Header ──────────────────────────────────────────────────────────────── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -143,7 +155,7 @@
     .step-indicator.active .dot { background: var(--accent); color: #fff; }
     .step-indicator.complete .dot { background: var(--success); color: #fff; }
     .step-indicator.active { color: var(--text); }
-    .step-connector { flex: 1; height: 1px; background: var(--border); }
+    .step-connector { flex: 1; height: 2px; background: var(--border); border-radius: 99px; }
 
     /* ── Buttons ─────────────────────────────────────────────────────────────── */
     .btn {
@@ -175,17 +187,20 @@
 
     /* ── File upload ─────────────────────────────────────────────────────────── */
     .upload-area {
-      border: 2px dashed var(--border);
+      border: 1.5px solid var(--border);
       border-radius: var(--radius);
       padding: 2rem 1rem;
-      text-align: center;
       cursor: pointer;
-      transition: border-color .15s;
+      transition: border-color .15s, background .15s;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .upload-area:hover { border-color: var(--accent); }
+    .upload-area:hover { border-color: var(--accent); background: rgba(92,107,192,.04); }
     .upload-area input[type=file] { display: none; }
-    .upload-icon { font-size: 2rem; margin-bottom: .5rem; }
-    .upload-text { font-size: .85rem; color: var(--text-muted); }
+    .upload-icon { font-size: 2rem; margin-bottom: .5rem; line-height: 1; display: block; }
+    .upload-text { font-size: .85rem; color: var(--text-muted); text-align: center; }
 
     /* ── Status ──────────────────────────────────────────────────────────────── */
     .status {
@@ -195,9 +210,9 @@
       font-size: .85rem;
       font-weight: 500;
     }
-    .status--info    { background: rgba(108,99,255,.1); color: var(--accent); }
-    .status--success { background: rgba(34,197,94,.1);  color: var(--success); }
-    .status--error   { background: rgba(239,68,68,.1);  color: var(--error); }
+    .status--info    { background: rgba(92,107,192,.1);  color: var(--accent); }
+    .status--success { background: rgba(34,197,94,.1);   color: var(--success); }
+    .status--error   { background: rgba(239,68,68,.1);   color: var(--error); }
 
     /* ── Progress bar ────────────────────────────────────────────────────────── */
     .progress-wrap {
@@ -239,7 +254,7 @@
     }
     .age-preset-btn:hover, .age-preset-btn.selected {
       border-color: var(--accent);
-      background: rgba(108,99,255,.08);
+      background: rgba(92,107,192,.08);
       color: var(--accent);
     }
     .custom-range { display: flex; gap: .5rem; align-items: center; }
@@ -260,15 +275,6 @@
       border-radius: var(--radius);
       margin: .75rem 0;
       background: #000;
-    }
-    .selfie-thumb {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 50%;
-      border: 2px solid var(--success);
-      display: block;
-      margin: .75rem 0;
     }
 
     /* ── Attestation ─────────────────────────────────────────────────────────── */
@@ -332,7 +338,7 @@
     .trust-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: .5rem;
+      gap: .6rem;
       margin-top: .5rem;
     }
     .trust-item {
@@ -341,8 +347,11 @@
       align-items: flex-start;
       font-size: .75rem;
       color: var(--text-muted);
+      line-height: 1.5;
     }
-    .trust-icon { font-size: .9rem; flex-shrink: 0; }
+    .trust-icon { font-size: .9rem; flex-shrink: 0; margin-top: .05rem; }
+    .trust-item a { color: var(--accent); text-decoration: none; }
+    .trust-item a:hover { text-decoration: underline; }
 
     /* ── Verifier config ─────────────────────────────────────────────────────── */
     .verifier-config { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
@@ -355,6 +364,205 @@
       font-size: .85rem;
     }
     .verifier-config label { font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+
+    /* ── Start over ──────────────────────────────────────────────────────────── */
+    .start-over-row {
+      text-align: center;
+      margin-top: .25rem;
+      margin-bottom: .5rem;
+    }
+    .btn-ghost {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: .8rem;
+      font-weight: 500;
+      padding: .35rem .75rem;
+      border-radius: 99px;
+      transition: color .15s;
+    }
+    .btn-ghost:hover { color: var(--error); }
+
+    /* ── Birthdate badge (shown on Attest step) ──────────────────────────────── */
+    .birthdate-badge {
+      background: rgba(92,107,192,.1);
+      border: 1px solid rgba(92,107,192,.25);
+      border-radius: 8px;
+      padding: .55rem .85rem;
+      font-size: .82rem;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: .85rem;
+      letter-spacing: .01em;
+    }
+
+    /* ── Proof summary (shown after proof generation) ────────────────────────── */
+    .proof-summary {
+      margin-top: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .85rem 1rem;
+      font-size: .78rem;
+      line-height: 1.8;
+    }
+    .proof-summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+    }
+    .proof-summary-label { color: var(--text-muted); }
+    .proof-summary-value {
+      font-family: monospace;
+      color: var(--text);
+      font-size: .75rem;
+      word-break: break-all;
+      text-align: right;
+    }
+    .proof-summary-value.mono-accent { color: var(--accent); }
+
+    /* ── Credential record (show QR page) ───────────────────────────────────── */
+    .cred-summary {
+      margin-top: .85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .8rem 1rem;
+      font-size: .78rem;
+    }
+    .cred-summary-title {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--text-muted);
+      margin-bottom: .6rem;
+    }
+    .cred-summary-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: .35rem;
+    }
+    .cred-summary-label { color: var(--text-muted); min-width: 96px; flex-shrink: 0; }
+    .cred-summary-value { color: var(--text); flex: 1; }
+    .cred-summary-value.mono { font-family: monospace; color: var(--accent); font-size: .74rem; }
+    .btn-copy {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .12rem .4rem;
+      font-size: .68rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+    .cred-summary-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .25rem;
+      margin-top: .6rem;
+      padding-top: .55rem;
+      border-top: 1px solid var(--border);
+    }
+    .cred-summary-footer a { color: var(--accent); text-decoration: none; font-size: .75rem; }
+    .cred-summary-footer a:hover { text-decoration: underline; }
+
+    /* ── FAQ ─────────────────────────────────────────────────────────────────── */
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: .85rem 0;
+    }
+    .faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .faq-item:first-child { padding-top: 0; }
+    .faq-q {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .35rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .faq-q .faq-chevron {
+      color: var(--text-muted);
+      font-size: .75rem;
+      flex-shrink: 0;
+      margin-top: .15rem;
+      transition: transform .2s;
+    }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-a {
+      font-size: .83rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      display: none;
+    }
+    .faq-item.open .faq-a { display: block; }
+    .faq-a a { color: var(--accent); text-decoration: none; }
+    .faq-a a:hover { text-decoration: underline; }
+    .faq-section-title {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--text-muted);
+      margin: 1.25rem 0 .5rem;
+    }
+    .faq-section-title:first-child { margin-top: 0; }
+
+    /* ── Verify record (shown after successful verification) ─────────────────── */
+    .verify-record {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .65rem .9rem;
+      font-size: .78rem;
+      text-align: left;
+      margin: 0 auto;
+      max-width: 320px;
+    }
+    .verify-record-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .verify-record-label {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+    .verify-record-value {
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+    }
+    .verify-record-value.mono {
+      font-family: monospace;
+      color: var(--accent);
+      font-size: .74rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Starfield background ────────────────────────────────────────────────── */
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .45;
+    }
+    [data-theme="light"] #stars-canvas { opacity: .40; }
+    .app { position: relative; z-index: 1; }
 
     /* ── Footer ──────────────────────────────────────────────────────────────── */
     footer {
@@ -378,9 +586,9 @@
   <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <header>
     <div class="logo">Prove<span>My</span>Age</div>
-    <button class="nav-btn active" id="createModeBtn">Create</button>
-    <button class="nav-btn"        id="showModeBtn">My QR</button>
+    <button class="nav-btn active" id="createModeBtn">Prove</button>
     <button class="nav-btn"        id="verifyModeBtn">Verify</button>
+    <button class="nav-btn"        id="faqModeBtn">FAQ</button>
     <button class="theme-btn"      id="themeToggle" title="Toggle dark/light mode">🌙</button>
   </header>
 
@@ -394,39 +602,35 @@
       <!-- Step indicator -->
       <div class="steps">
         <div class="step-indicator active" data-step="1">
-          <div class="dot">1</div>Passport
+          <div class="dot">1</div>Input
         </div>
         <div class="step-connector"></div>
         <div class="step-indicator" data-step="2">
-          <div class="dot">2</div>Selfie
+          <div class="dot">2</div>Attest
         </div>
         <div class="step-connector"></div>
         <div class="step-indicator" data-step="3">
-          <div class="dot">3</div>Attest
-        </div>
-        <div class="step-connector"></div>
-        <div class="step-indicator" data-step="4">
-          <div class="dot">4</div>Proof
+          <div class="dot">3</div>Prove
         </div>
       </div>
 
-      <!-- ── Step 1: Passport ───────────────────────────────────────────── -->
+      <!-- ── Step 1: Scan passport ──────────────────────────────────────── -->
       <div class="step-panel card" data-step="1">
         <div class="card-title">📷 Scan Your Passport</div>
-        <div class="card-sub">The MRZ at the bottom of the photo page. Processed locally — no upload.</div>
+        <div class="card-sub">Must include the <a href="https://en.wikipedia.org/wiki/Machine-readable_passport" target="_blank" rel="noopener" style="color:var(--accent)">MRZ text strip</a> at the bottom of the photo page. Processed locally, no upload.</div>
 
         <label class="upload-area" for="passportUpload">
           <div class="upload-icon">🛂</div>
           <div class="upload-text"><strong>Click to upload</strong> a photo of your passport</div>
-          <input type="file" id="passportUpload" accept="image/*" capture="environment" />
+          <input type="file" id="passportUpload" accept="image/*" />
         </label>
 
-        <div class="btn-row" style="margin-top:.75rem">
-          <button class="btn btn-secondary" id="passportCameraBtn">📸 Use camera</button>
+        <div style="margin-top:.75rem; text-align:center">
+          <button class="btn btn-secondary" id="passportCameraBtn">📸 Scan with camera</button>
         </div>
 
         <video id="passport-video" autoplay playsinline hidden></video>
-        <button class="btn btn-primary" id="capturePassportBtn" hidden style="margin-top:.5rem">
+        <button class="btn btn-primary btn-large" id="capturePassportBtn" hidden style="margin-top:.5rem">
           Capture →
         </button>
 
@@ -436,48 +640,32 @@
         <div id="s1-status" class="status status--info" hidden></div>
       </div>
 
-      <!-- ── Step 2: Selfie ─────────────────────────────────────────────── -->
+      <!-- ── Step 2: Attestation ────────────────────────────────────────── -->
       <div class="step-panel card" data-step="2" hidden>
-        <div class="card-title">🤳 Take a Selfie</div>
-        <div class="card-sub">Your face embedding is hashed locally. The photo is immediately discarded.</div>
+        <div class="card-title">✍️ Confirm Your Identity</div>
+        <div class="card-sub">A declaration signed on your device. Nothing is stored or transmitted.</div>
 
-        <button class="btn btn-primary btn-large" id="selfieBtn">Open front camera</button>
-
-        <video id="selfie-video" autoplay playsinline hidden></video>
-        <button class="btn btn-primary" id="captureSelfieBtn" hidden style="margin-top:.5rem">
-          Capture selfie →
-        </button>
-
-        <img id="selfie-thumb" class="selfie-thumb" hidden alt="Selfie thumbnail" />
-        <div id="s2-status" class="status" hidden></div>
-      </div>
-
-      <!-- ── Step 3: Attestation ────────────────────────────────────────── -->
-      <div class="step-panel card" data-step="3" hidden>
-        <div class="card-title">✍️ Legal Attestation</div>
-        <div class="card-sub">Cryptographically signed on your device. Misuse is federal fraud.</div>
+        <div class="birthdate-badge" id="attest-birthdate-display" hidden></div>
 
         <div class="attest-box">
-          I solemnly attest that (1) this passport is genuinely mine, (2) I am the person
-          captured in the selfie, and (3) I understand that misrepresenting my identity
-          to circumvent age verification may constitute federal fraud under 18 U.S.C. § 1028
-          and applicable laws. This attestation is cryptographically signed and can be
-          produced as evidence in legal proceedings.
+          I confirm that this passport is genuinely mine, and I understand that
+          misrepresenting my identity to circumvent age verification is against
+          the law in many jurisdictions.
         </div>
 
         <div class="attest-check">
           <input type="checkbox" id="attestCheckbox" />
-          <label for="attestCheckbox">I understand and agree to the above declaration</label>
+          <label for="attestCheckbox">I confirm the above statement is true</label>
         </div>
 
         <button class="btn btn-primary btn-large" id="attestBtn">Sign with device key →</button>
 
-        <div id="s3-status" class="status" hidden></div>
+        <div id="s2-status" class="status" hidden></div>
         <div id="sig-preview" class="sig-preview" style="margin-top:.5rem"></div>
       </div>
 
-      <!-- ── Step 4: Generate proof ─────────────────────────────────────── -->
-      <div class="step-panel card" data-step="4" hidden>
+      <!-- ── Step 3: Generate proof ─────────────────────────────────────── -->
+      <div class="step-panel card" data-step="3" hidden>
         <div class="card-title">🔐 Choose Age Threshold</div>
         <div class="card-sub">Select the minimum age you want to prove. Your exact age stays private.</div>
 
@@ -487,13 +675,13 @@
           <button class="age-preset-btn" data-preset="2">21+</button>
           <button class="age-preset-btn" data-preset="3">25+</button>
           <button class="age-preset-btn" data-preset="4">Under 18</button>
-          <button class="btn btn-secondary" id="customRangeBtn" style="font-size:.8rem">Custom…</button>
+          <button class="btn btn-secondary" id="customRangeBtn" style="font-size:.8rem">Custom...</button>
         </div>
 
         <div id="custom-range-panel" hidden style="margin-bottom:.75rem">
           <div class="custom-range">
             <input id="custom-min" type="number" placeholder="Min age" min="0" max="150" />
-            <span>–</span>
+            <span>to</span>
             <input id="custom-max" type="number" placeholder="Max age (optional)" min="0" max="150" />
           </div>
         </div>
@@ -505,7 +693,15 @@
         <div id="proof-progress" class="progress-wrap" hidden>
           <div class="progress-bar" style="width:100%"></div>
         </div>
-        <div id="s4-status" class="status" hidden></div>
+        <div id="s3-status" class="status" hidden></div>
+
+        <!-- Credential summary shown after proof is generated -->
+        <div id="proof-summary" class="proof-summary" hidden></div>
+      </div>
+
+      <!-- Start over (always visible in create mode) -->
+      <div class="start-over-row">
+        <button class="btn-ghost" id="startOverBtn">↩ Start over</button>
       </div>
     </div>
 
@@ -514,27 +710,64 @@
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div class="mode-panel" data-mode="show" hidden>
       <div class="card">
-        <div class="card-title">Your Age Credential</div>
-        <div class="card-sub">Show this QR to a verifier. It expires in 60 seconds.</div>
+        <div class="card-title">Your Age Proof</div>
+        <div class="card-sub">Show this QR to a verifier. It expires in 90 seconds and can only be used once.</div>
 
         <div class="qr-wrap">
           <div class="qr-label" id="qr-age-label">18+</div>
           <canvas id="qr-canvas" class="qr-canvas" width="280" height="280"></canvas>
-          <div class="qr-countdown">Expires in <strong id="qr-countdown">60s</strong></div>
-          <button class="btn btn-secondary" id="refreshQrBtn">↺ Refresh QR</button>
+          <div class="qr-countdown">Expires in <strong id="qr-countdown">90s</strong></div>
+          <button class="btn btn-secondary" id="markScannedBtn" hidden style="font-size:.82rem;padding:.45rem 1rem">✓ Mark as scanned</button>
+        </div>
+
+        <!-- Credential record -->
+        <div class="cred-summary" id="qr-cred-summary" hidden>
+          <div class="cred-summary-title">Credential Record</div>
+          <div class="cred-summary-row">
+            <span class="cred-summary-label">Age threshold</span>
+            <span class="cred-summary-value" id="cs-threshold"></span>
+          </div>
+          <div class="cred-summary-row">
+            <span class="cred-summary-label">Credential ID</span>
+            <span class="cred-summary-value mono" id="cs-credid"></span>
+            <button class="btn-copy" id="cs-copy">Copy</button>
+          </div>
+          <div class="cred-summary-row">
+            <span class="cred-summary-label">Generated</span>
+            <span class="cred-summary-value" id="cs-generated"></span>
+          </div>
+          <div class="cred-summary-footer">
+            <a id="cs-download" href="#" download="provemyage-credential.txt" style="font-size:.75rem">Download record as .txt</a>
+            <span style="margin:0 .5rem;color:var(--border)">|</span>
+            <button class="btn-ghost" id="startOverBtnShow" style="font-size:.75rem;padding:.2rem .5rem">↩ Start over</button>
+          </div>
         </div>
       </div>
 
-      <!-- Trust badges -->
+      <!-- How this credential is secured -->
       <div class="card">
         <div class="card-title" style="font-size:.9rem">How this credential is secured</div>
         <div class="trust-grid">
-          <div class="trust-item"><span class="trust-icon">🔒</span>Zero-knowledge proof — no personal data in the QR</div>
-          <div class="trust-item"><span class="trust-icon">🛂</span>Derived from real passport MRZ (ICAO 9303)</div>
-          <div class="trust-item"><span class="trust-icon">🤳</span>Face hash binds selfie to credential</div>
-          <div class="trust-item"><span class="trust-icon">⏱</span>60-second single-use expiry prevents replay</div>
-          <div class="trust-item"><span class="trust-icon">✍️</span>ECDSA-signed legal attestation</div>
-          <div class="trust-item"><span class="trust-icon">📵</span>Passport never left the browser</div>
+          <div class="trust-item">
+            <span class="trust-icon">🔒</span>
+            <span><a href="https://en.wikipedia.org/wiki/Zero-knowledge_proof" target="_blank" rel="noopener">Zero-knowledge proof</a> via <a href="https://noir-lang.org" target="_blank" rel="noopener">Noir</a> + <a href="https://github.com/AztecProtocol/barretenberg" target="_blank" rel="noopener">Barretenberg</a> - no personal data in the QR</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">🛂</span>
+            <span>Derived from your passport using the <a href="https://en.wikipedia.org/wiki/Machine-readable_passport" target="_blank" rel="noopener">MRZ (ICAO 9303)</a> standard</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">⏱</span>
+            <span>90-second single-use expiry prevents replay attacks</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">✍️</span>
+            <span><a href="https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm" target="_blank" rel="noopener">ECDSA-signed</a> legal attestation tied to your device key</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">📵</span>
+            <span>Passport scanned in-browser via WebAssembly - no pixels sent to any server. <a href="https://github.com/yourusername/provemyage" target="_blank" rel="noopener">View source to audit.</a></span>
+          </div>
         </div>
       </div>
     </div>
@@ -551,11 +784,9 @@
         <div class="verifier-config">
           <label for="backend-url-input">Backend URL</label>
           <input id="backend-url-input" type="url" value="http://localhost:3001" placeholder="https://your-backend.com" />
-          <label for="api-key-input">API Key</label>
-          <input id="api-key-input" type="password" placeholder="pma_… (get a free key at provemyage.com)" />
         </div>
 
-        <div class="btn-row">
+        <div class="btn-row" id="verify-scan-btns">
           <button class="btn btn-primary" id="startScanBtn">📷 Scan QR</button>
           <label class="btn btn-secondary" for="scanFileInput">📁 Upload image</label>
           <input type="file" id="scanFileInput" accept="image/*" hidden />
@@ -568,7 +799,108 @@
         <div id="verify-result" class="verify-result-panel" hidden>
           <span id="result-icon" class="result-icon"></span>
           <div id="result-text" class="result-text"></div>
-          <div id="attestation-status" style="font-size:.8rem; color:var(--text-muted)"></div>
+          <div id="attestation-status" style="font-size:.8rem; color:var(--text-muted); margin-bottom:.75rem"></div>
+          <div id="verify-record" class="verify-record" hidden>
+            <div class="verify-record-row">
+              <span class="verify-record-label">Credential ID</span>
+              <span class="verify-record-value mono" id="verify-nullifier"></span>
+              <button class="btn-copy" id="verify-copy">Copy</button>
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="verifyAnotherBtn" style="margin-top:1rem">Verify Another</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- FAQ MODE                                                              -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <div class="mode-panel" data-mode="faq" hidden>
+      <div class="card">
+        <div class="card-title">Frequently Asked Questions</div>
+        <div class="card-sub">How ProveMyAge works and what it does (and doesn't) reveal.</div>
+
+        <div class="faq-section-title">The basics</div>
+
+        <div class="faq-item">
+          <div class="faq-q">What is ProveMyAge?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">ProveMyAge lets you prove your age from a real passport without showing your name, birthdate, or any personal information to anyone. You generate a cryptographic proof on your own device. The verifier learns only that you meet an age threshold — nothing else.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Who is it for?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Anyone who needs to prove their age without handing over a physical ID. Also useful for businesses that need age verification but don't want to store or handle personal documents.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Does it work with any passport?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Yes — any passport that follows the <a href="https://en.wikipedia.org/wiki/Machine-readable_passport" target="_blank" rel="noopener">ICAO 9303 standard</a>, which is essentially every modern passport issued by any country. The passport must show the two-line MRZ text strip at the bottom of the photo page.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Can I use a driver's license or national ID?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Not currently. Passports are the only globally standardized document format. Driver's licenses vary by country and state, making them much harder to support reliably.</div>
+        </div>
+
+        <div class="faq-section-title">Privacy and data</div>
+
+        <div class="faq-item">
+          <div class="faq-q">Does the app upload my passport photo?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">No. Your passport photo is processed entirely on your device using WebAssembly-based OCR. No image, no birthdate, and no personal data ever leaves your device. You can verify this by turning off WiFi before scanning — it works completely offline up to the proof generation step.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What does the verifier actually see when they scan my QR?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Only two things: the age threshold you chose to prove (e.g. "18+" or "25+"), and a unique Verification ID. They cannot see your name, exact age, birthdate, nationality, or any other personal information.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What is the Verification ID (the 0x... number)?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">It's a unique receipt number for that specific verification — like a transaction ID. It's a cryptographic hash computed from a random secret and your birthdate inside the ZK proof. It contains no personal information and cannot be reversed. Verifiers can log it as proof that a verification occurred, but it tells them nothing about who verified or what their age is.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Does ProveMyAge store any of my information?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">The backend stores almost nothing. While your QR is live (90 seconds), it temporarily holds the proof data so a verifier can check it. Once the QR is scanned or expires, that data is deleted. The only thing permanently recorded is that the Verification ID was used — one bit of information, with no name or personal data attached.</div>
+        </div>
+
+        <div class="faq-section-title">How it works</div>
+
+        <div class="faq-item">
+          <div class="faq-q">What is a zero-knowledge proof?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">A zero-knowledge proof lets you convince someone that a statement is true without revealing any information beyond the truth of that statement. Here, the statement is "my birthdate is before X" — and the proof convinces the verifier of that fact without ever revealing the actual birthdate. The math behind it is done by <a href="https://noir-lang.org" target="_blank" rel="noopener">Noir</a> and <a href="https://github.com/AztecProtocol/barretenberg" target="_blank" rel="noopener">Barretenberg</a>, running entirely on your device.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Why does generating the proof take a few seconds?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">The app runs complex cryptographic math directly on your device to construct the ZK proof. This involves thousands of elliptic curve operations and typically takes 5-30 seconds depending on your device's processing power. It only needs to happen once per credential.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How long does the QR code last?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">90 seconds from when it's generated. After that the QR becomes invalid and shows as used. This prevents someone from screenshotting your QR and scanning it later.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Can the same QR be scanned twice?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">No. The QR is single-use. The moment a verifier scans it, the backend marks the credential as spent and any subsequent scan returns a failure. This is enforced cryptographically, not just by a timer.</div>
+        </div>
+
+        <div class="faq-section-title">Legal and practical</div>
+
+        <div class="faq-item">
+          <div class="faq-q">Is this a legally valid form of ID verification?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">ProveMyAge is a privacy-preserving tool backed by a signed attestation from your device. It is not a replacement for official ID checks in legally regulated contexts (alcohol sales, age-restricted products, etc.) where law requires inspection of a physical document. Use it where you want privacy-preserving age verification, not where regulation mandates a specific process.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What happens if my passport scan fails?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Make sure the photo shows the full MRZ strip — the two lines of densely packed text at the very bottom of the passport photo page. Good lighting and a flat, non-blurry image make a big difference. Avoid shadows across the text, and make sure the entire bottom strip is in frame.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Is the source code available?<span class="faq-chevron">▼</span></div>
+          <div class="faq-a">Yes. The full source is open and auditable. A closed-source age verification app would require you to trust our claims — open source means you (or a developer you trust) can verify them. <a href="https://github.com/yourusername/provemyage" target="_blank" rel="noopener">View on GitHub.</a></div>
         </div>
       </div>
     </div>
@@ -580,11 +912,149 @@
     <a href="https://github.com/yourusername/provemyage" target="_blank" rel="noopener">
       Open source on GitHub
     </a>
-    · Free for users forever · Verifiers: 100 free checks/month
-    <br/>Passport processed locally · Source auditable · No personal data ever transmitted
+    <br/>Passport processed locally · No personal data ever transmitted
   </footer>
 </div>
 
+<canvas id="stars-canvas" aria-hidden="true"></canvas>
+
+<script>
+(function() {
+  var canvas = document.getElementById('stars-canvas');
+  var ctx    = canvas.getContext('2d');
+  var particles = [];
+
+  // Planet accent colors [r,g,b]
+  var PLANET_COLS = [[210,155,65],[60,185,155],[185,100,155],[95,155,205]];
+
+  function rnd(lo, hi) { return lo + Math.random() * (hi - lo); }
+  function rndSign() { return Math.random() > 0.5 ? 1 : -1; }
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    resize();
+    particles = [];
+
+    // Stars (dark mode)
+    for (var i = 0; i < 52; i++) {
+      particles.push({ type:'star',
+        x: rnd(0, canvas.width),  y: rnd(0, canvas.height),
+        r: rnd(0.3, 1.4),
+        dx: rndSign() * rnd(0.08, 0.32),  dy: rndSign() * rnd(0.06, 0.28),
+        a: Math.random(),  da: rndSign() * rnd(0.003, 0.006),
+      });
+    }
+
+    // Planets (dark mode) — subtle, slightly larger, colored glow
+    for (var j = 0; j < 4; j++) {
+      var col = PLANET_COLS[j];
+      particles.push({ type:'planet', col:col,
+        x: rnd(0, canvas.width),  y: rnd(0, canvas.height),
+        r: rnd(2.2, 3.4),
+        dx: rndSign() * rnd(0.06, 0.18),  dy: rndSign() * rnd(0.05, 0.15),
+        a: rnd(0.45, 0.85),  da: rndSign() * rnd(0.002, 0.004),
+      });
+    }
+
+    // Birds (light mode) — simple flapping V shapes
+    for (var k = 0; k < 11; k++) {
+      particles.push({ type:'bird',
+        x: rnd(0, canvas.width),  y: rnd(0, canvas.height),
+        size: rnd(5, 9),
+        dx: rndSign() * rnd(0.22, 0.48),  dy: rndSign() * rnd(0.04, 0.14),
+        a: rnd(0.35, 0.65),  da: rndSign() * rnd(0.002, 0.005),
+        phase: Math.random() * Math.PI * 2,
+        fspeed: rnd(0.025, 0.055),
+      });
+    }
+  }
+
+  function wrap(p) {
+    var pad = 12;
+    if (p.x < -pad) p.x = canvas.width  + pad;
+    if (p.x > canvas.width  + pad) p.x = -pad;
+    if (p.y < -pad) p.y = canvas.height + pad;
+    if (p.y > canvas.height + pad) p.y = -pad;
+  }
+
+  function clampAlpha(p, lo, hi) {
+    p.a += p.da;
+    if (p.a > hi) p.da = -Math.abs(p.da);
+    if (p.a < lo) p.da =  Math.abs(p.da);
+  }
+
+  function drawStar(s) {
+    s.x += s.dx; s.y += s.dy; wrap(s); clampAlpha(s, 0, 1);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, 6.2832);
+    ctx.fillStyle = 'rgba(140,152,225,' + s.a.toFixed(2) + ')';
+    ctx.fill();
+  }
+
+  function drawPlanet(p) {
+    p.x += p.dx; p.y += p.dy; wrap(p); clampAlpha(p, 0.3, 0.9);
+    var c = p.col, al = p.a.toFixed(2), glAl = (p.a * 0.18).toFixed(2);
+    // Glow halo
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * 2.8, 0, 6.2832);
+    ctx.fillStyle = 'rgba('+c[0]+','+c[1]+','+c[2]+','+glAl+')';
+    ctx.fill();
+    // Core
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+    ctx.fillStyle = 'rgba('+c[0]+','+c[1]+','+c[2]+','+al+')';
+    ctx.fill();
+  }
+
+  function drawBird(b) {
+    b.x += b.dx; b.y += b.dy; wrap(b); clampAlpha(b, 0.22, 0.72);
+    b.phase += b.fspeed;
+    var flap = Math.sin(b.phase) * b.size * 0.45;
+    var s    = b.size;
+    ctx.beginPath();
+    ctx.moveTo(b.x - s, b.y + flap);
+    ctx.quadraticCurveTo(b.x - s * 0.4, b.y - flap * 0.6, b.x, b.y);
+    ctx.quadraticCurveTo(b.x + s * 0.4, b.y - flap * 0.6, b.x + s, b.y + flap);
+    ctx.strokeStyle = 'rgba(38,52,74,' + b.a.toFixed(2) + ')';
+    ctx.lineWidth   = 1.4;
+    ctx.stroke();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var dark = document.documentElement.dataset.theme === 'dark';
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (dark) {
+        if (p.type === 'star')   drawStar(p);
+        if (p.type === 'planet') drawPlanet(p);
+      } else {
+        if (p.type === 'bird')   drawBird(p);
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+  window.addEventListener('resize', resize, { passive: true });
+})();
+</script>
+
+<script>
+  document.querySelectorAll('.faq-q').forEach(function(q) {
+    q.addEventListener('click', function() {
+      var item = q.closest('.faq-item');
+      var wasOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(function(i) { i.classList.remove('open'); });
+      if (!wasOpen) item.classList.add('open');
+    });
+  });
+</script>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

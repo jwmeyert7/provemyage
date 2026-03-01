@@ -84,9 +84,8 @@ export async function createAttestation({ faceHash, ageRangeLabel, nullifierSeed
 
   const message = JSON.stringify({
     app:          'ProveMyAge v1',
-    statement:    'I attest under penalty of perjury that this passport is genuinely mine, ' +
-                  'I am the person in the selfie, and I understand misuse constitutes federal fraud.',
-    faceHash,
+    statement:    'I attest under penalty of perjury that this passport is genuinely mine ' +
+                  'and I understand misuse constitutes federal fraud.',
     ageRangeLabel,
     nullifierRef: nullifierSeedHex.slice(2, 18), // partial reveal for binding, not the full seed
     issuedAt:     new Date().toISOString(),

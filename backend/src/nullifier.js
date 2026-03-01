@@ -1,25 +1,39 @@
-// Single-use nullifier store backed by Redis.
-// A nullifier is a deterministic hash output from the ZK circuit.
-// Once spent it must never be accepted again — prevents QR replay attacks.
+// Single-use nullifier store.
+// Uses Redis when available; falls back to an in-memory Set when Redis is
+// not running (dev / demo mode). The in-memory store resets on server restart
+// but still prevents replay within a session.
+// In production, run Redis so spent nullifiers survive restarts.
 
 import Redis from 'ioredis';
 
-let redis;
+// ── In-memory fallback ────────────────────────────────────────────────────────
+const memStore = new Set();
+
+// ── Redis (optional) ──────────────────────────────────────────────────────────
+let redis = null;
+let redisReady = false;
+
+function initRedis() {
+  if (redis) return;
+  redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+    lazyConnect:        true,
+    enableOfflineQueue: false,
+    connectTimeout:     2000,
+    maxRetriesPerRequest: 1,
+  });
+  redis.on('ready', () => { redisReady = true;  console.log('[redis] connected'); });
+  redis.on('error', ()  => { redisReady = false; });
+  redis.connect().catch(() => {
+    console.warn('[redis] not available — using in-memory nullifier store (demo mode)');
+  });
+}
 
 export function getRedis() {
-  if (!redis) {
-    redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      lazyConnect: false,
-      enableOfflineQueue: true,
-    });
-    redis.on('error', err => console.error('[redis]', err.message));
-  }
+  initRedis();
   return redis;
 }
 
-const TTL = Number(process.env.PROOF_TTL_SECONDS ?? 60);
-// Keep nullifiers for 7 days so an expired credential can't be replayed
-// even if the Redis key outlives the 60-second window.
+// Keep nullifiers for 7 days so a credential can't be replayed after expiry.
 const NULLIFIER_RETENTION_SECONDS = 7 * 24 * 60 * 60;
 
 /**
@@ -27,17 +41,29 @@ const NULLIFIER_RETENTION_SECONDS = 7 * 24 * 60 * 60;
  * Returns true if the nullifier was fresh (just spent), false if already used.
  */
 export async function spendNullifier(nullifier) {
-  const key = `nul:${nullifier}`;
-  // SET key value NX EX ttl — only sets if key does not exist
-  const result = await getRedis().set(key, '1', 'NX', 'EX', NULLIFIER_RETENTION_SECONDS);
-  return result === 'OK'; // OK = was fresh; null = already existed
+  if (redisReady) {
+    try {
+      const key    = `nul:${nullifier}`;
+      const result = await redis.set(key, '1', 'NX', 'EX', NULLIFIER_RETENTION_SECONDS);
+      return result === 'OK';
+    } catch {
+      // Redis hiccup — fall through to in-memory
+    }
+  }
+  // In-memory fallback
+  if (memStore.has(nullifier)) return false;
+  memStore.add(nullifier);
+  return true;
 }
 
 /**
  * Check whether a nullifier has been spent without spending it.
- * Used for debugging/dashboard only — verification always uses spendNullifier.
  */
 export async function isNullifierSpent(nullifier) {
-  const key = `nul:${nullifier}`;
-  return (await getRedis().exists(key)) === 1;
+  if (redisReady) {
+    try {
+      return (await redis.exists(`nul:${nullifier}`)) === 1;
+    } catch { /* fall through */ }
+  }
+  return memStore.has(nullifier);
 }

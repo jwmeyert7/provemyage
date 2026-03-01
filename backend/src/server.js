@@ -2,10 +2,22 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import { randomUUID } from 'crypto';
 import { verifyProof } from './verifier.js';
 import { spendNullifier } from './nullifier.js';
 import { requireApiKey, createApiKey } from './auth.js';
 import { dashboardRouter, recordEvent } from './dashboard.js';
+
+// In-memory credential store — proof is too large for a QR code so the
+// frontend POSTs it here and the QR just carries a short token.
+// Credentials expire after 5 minutes.
+const pendingCreds = new Map();
+function storeCred(data) {
+  const token = randomUUID();
+  pendingCreds.set(token, data);
+  setTimeout(() => pendingCreds.delete(token), 5 * 60 * 1000);
+  return token;
+}
 
 const app  = express();
 const PORT = process.env.PORT ?? 3001;
@@ -45,8 +57,20 @@ app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
  * Returns: { verified: boolean, ageRangeLabel: string }
  * Never returns or logs any personal data.
  */
-app.post('/verify', requireApiKey, async (req, res) => {
-  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel } = req.body ?? {};
+app.post('/verify', async (req, res) => {
+  let body = req.body ?? {};
+
+  // ── Token-based lookup (QR v2) ──────────────────────────────────────────
+  if (body.token) {
+    const stored = pendingCreds.get(body.token);
+    if (!stored) {
+      return res.status(400).json({ error: 'Token not found or expired' });
+    }
+    pendingCreds.delete(body.token); // single-use
+    body = stored;
+  }
+
+  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel } = body;
 
   // ── Input validation ────────────────────────────────────────────────────
   if (!Array.isArray(proof) || !Array.isArray(publicInputs)) {
@@ -88,7 +112,29 @@ app.post('/verify', requireApiKey, async (req, res) => {
   // ── Record analytics event ──────────────────────────────────────────────
   await recordEvent(req.apiKeyMeta?.hash, { ageRangeLabel, verified: true, timestamp });
 
-  res.json({ verified: true, ageRangeLabel: ageRangeLabel ?? 'Unknown' });
+  res.json({ verified: true, ageRangeLabel: ageRangeLabel ?? 'Unknown', nullifier });
+});
+
+// ── Credential store (short token → proof data for QR size reduction) ────────
+/**
+ * POST /credentials
+ * Body: { proof, publicInputs, nullifier, timestamp, ageRangeLabel }
+ * Returns: { token } — a UUID the QR code carries instead of the full proof
+ * No API key required; rate-limited by global limiter.
+ */
+app.post('/credentials', async (req, res) => {
+  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel } = req.body ?? {};
+  if (!Array.isArray(proof) || !Array.isArray(publicInputs)) {
+    return res.status(400).json({ error: 'proof and publicInputs must be arrays' });
+  }
+  if (typeof nullifier !== 'string' || !nullifier.startsWith('0x')) {
+    return res.status(400).json({ error: 'nullifier must be a 0x hex string' });
+  }
+  if (typeof timestamp !== 'number') {
+    return res.status(400).json({ error: 'timestamp must be a number' });
+  }
+  const token = storeCred({ proof, publicInputs, nullifier, timestamp, ageRangeLabel });
+  res.json({ token, expiresIn: 5 * 60 });
 });
 
 // ── Verifier dashboard ──────────────────────────────────────────────────────

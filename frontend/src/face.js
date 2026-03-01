@@ -10,11 +10,14 @@ let faceMeshInstance = null;
 async function loadFaceMesh() {
   if (faceMeshInstance) return faceMeshInstance;
 
-  // Dynamic import so the heavy WASM is only loaded when needed
-  const { FaceMesh } = await import(
+  // MediaPipe's CDN bundle attaches to window, not ESM named exports.
+  // Load the script, then read FaceMesh from window.
+  await import(
     /* @vite-ignore */
     'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js'
   );
+  const FaceMesh = window.FaceMesh;
+  if (!FaceMesh) throw new Error('MediaPipe FaceMesh failed to load from CDN');
 
   faceMeshInstance = new FaceMesh({
     locateFile: (file) =>

@@ -1,54 +1,30 @@
 // QR code generation (user → verifier) and scanning (verifier side).
-// The QR payload is a compact JSON blob; large proofs are base64-encoded.
+// v2 QR: the proof is uploaded to the backend; the QR carries only a short token.
+// v1 QR (legacy): full proof embedded — kept for backwards-compatible scanning.
 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
-// ── Encoding helpers ─────────────────────────────────────────────────────────
-function toBase64(arr) {
-  return btoa(String.fromCharCode(...new Uint8Array(arr instanceof Array ? arr : Array.from(arr))));
-}
-
-function fromBase64(b64) {
-  return Array.from(atob(b64), c => c.charCodeAt(0));
-}
-
-// ── QR generation ────────────────────────────────────────────────────────────
-
-/**
- * Build the QR payload from a credential + fresh timestamp + nullifier.
- *
- * IMPORTANT: A fresh QR is generated each time (new timestamp → new nullifier),
- * so the 60-second window is enforced at scan time by the backend.
- *
- * @param {Object} credential - from saveCredential()
- * @param {number} timestamp  - current Unix seconds (must match proof)
- * @returns {string} compact JSON string
- */
-export function buildQRPayload(credential, timestamp) {
-  const { proof, publicInputs, nullifier, faceHash, ageRangeLabel, attestation } = credential;
-  return JSON.stringify({
-    v: 1,
-    ts: timestamp,
-    ar: ageRangeLabel,
-    pf: toBase64(proof),
-    pi: publicInputs,
-    nl: nullifier,
-    fh: faceHash,
-    at: {
-      pk: attestation.publicKey,
-      sg: attestation.signature,
-      ms: attestation.message,
-    },
+// ── Upload credential to backend, get short token ─────────────────────────
+async function uploadCredential(credential, backendUrl) {
+  const { proof, publicInputs, nullifier, ageRangeLabel } = credential;
+  const timestamp = Math.floor(Date.now() / 1000);
+  const res = await fetch(`${backendUrl}/credentials`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proof, publicInputs, nullifier, timestamp, ageRangeLabel }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? `Backend error ${res.status}`);
+  }
+  return res.json(); // { token, expiresIn }
 }
+
+// ── QR generation ─────────────────────────────────────────────────────────
 
 /**
  * Render a QR code into a <canvas> element.
- *
- * @param {string}            payload
- * @param {HTMLCanvasElement} canvas
- * @param {Object}            [opts]
  */
 export async function renderQR(payload, canvas, opts = {}) {
   await QRCode.toCanvas(canvas, payload, {
@@ -63,54 +39,38 @@ export async function renderQR(payload, canvas, opts = {}) {
 }
 
 /**
- * High-level helper: generate a QR canvas for a credential.
- * Returns the canvas element and a cleanup timer.
+ * High-level helper: upload credential to backend, generate token QR.
  *
  * @param {Object}            credential
  * @param {HTMLCanvasElement} canvas
  * @param {number}            [ttlSeconds=60]
+ * @param {string}            [backendUrl]
  * @returns {{ cancel: Function, expiresAt: number }}
  */
-export async function showCredentialQR(credential, canvas, ttlSeconds = 60) {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const payload   = buildQRPayload(credential, timestamp);
+export async function showCredentialQR(credential, canvas, ttlSeconds = 60, backendUrl = 'http://localhost:3001') {
+  const { token } = await uploadCredential(credential, backendUrl);
+
+  // Compact v2 payload — just the token + age label
+  const payload = JSON.stringify({ v: 2, t: token, ar: credential.ageRangeLabel });
   await renderQR(payload, canvas);
 
-  const expiresAt = timestamp + ttlSeconds;
-  const timer     = setInterval(() => {
-    const remaining = expiresAt - Math.floor(Date.now() / 1000);
-    if (remaining <= 0) {
-      clearInterval(timer);
-      // Grey out the canvas to signal expiry
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#ef4444';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('EXPIRED', canvas.width / 2, canvas.height / 2);
-    }
-  }, 1000);
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
 
-  return { cancel: () => clearInterval(timer), expiresAt };
+  // Visual expiry and countdown are handled by main.js (fillStaticNoise + markScannedBtn).
+  return { cancel: () => {}, expiresAt };
 }
 
-// ── QR scanning ──────────────────────────────────────────────────────────────
+// ── QR scanning ───────────────────────────────────────────────────────────
 
 /**
  * Scan a QR code from a video element frame-by-frame.
- * Returns the decoded credential payload object.
- *
- * @param {HTMLVideoElement} videoEl
- * @param {Function} [onFrame] - called each frame with { scanning: true }
- * @returns {Promise<Object>} parsed QR payload
  */
 export function scanQRFromCamera(videoEl, onFrame) {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas');
-    const ctx    = canvas.getContext('2d');
-    let active   = true;
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d');
+  let active   = true;
 
+  const promise = new Promise((resolve, reject) => {
     const scan = () => {
       if (!active) return;
       if (videoEl.readyState < 2) { requestAnimationFrame(scan); return; }
@@ -123,13 +83,15 @@ export function scanQRFromCamera(videoEl, onFrame) {
       const qr      = jsQR(imgData.data, canvas.width, canvas.height);
 
       if (qr) {
-        active = false;
         try {
-          resolve(parseQRPayload(qr.data));
-        } catch (err) {
-          reject(err);
+          const parsed = parseQRPayload(qr.data);
+          // Valid ProveMyAge QR — stop scanning and resolve
+          active = false;
+          resolve(parsed);
+          return;
+        } catch {
+          // Not a ProveMyAge QR (wrong format, product barcode, etc.) — keep scanning silently
         }
-        return;
       }
 
       if (onFrame) onFrame({ scanning: true });
@@ -138,14 +100,13 @@ export function scanQRFromCamera(videoEl, onFrame) {
 
     requestAnimationFrame(scan);
 
-    // Timeout after 120 seconds
     setTimeout(() => {
-      if (active) {
-        active = false;
-        reject(new Error('QR scan timed out. Make sure the QR code is visible.'));
-      }
+      if (active) { active = false; reject(new Error('QR scan timed out.')); }
     }, 120_000);
   });
+
+  const cancel = () => { active = false; };
+  return { promise, cancel };
 }
 
 /**
@@ -165,16 +126,29 @@ export async function scanQRFromFile(file) {
 
 /**
  * Parse and validate a raw QR payload string.
+ * Handles both v2 (token) and v1 (legacy full-proof) payloads.
  */
 export function parseQRPayload(raw) {
   let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    throw new Error('QR code does not contain valid JSON');
+  try { data = JSON.parse(raw); } catch { throw new Error('QR code does not contain valid JSON'); }
+
+  if (data.v === 2) {
+    // Token-based — backend lookup required for verification
+    return {
+      version:       2,
+      token:         data.t,
+      ageRangeLabel: data.ar,
+    };
   }
+
   if (data.v !== 1) throw new Error(`Unknown QR version: ${data.v}`);
+
+  // Legacy v1 full-proof payload
+  function fromBase64(b64) {
+    return Array.from(atob(b64), c => c.charCodeAt(0));
+  }
   return {
+    version:       1,
     timestamp:     data.ts,
     ageRangeLabel: data.ar,
     proof:         fromBase64(data.pf),

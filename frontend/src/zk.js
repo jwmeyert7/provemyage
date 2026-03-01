@@ -6,15 +6,21 @@
 //
 // Thread count: defaults to navigator.hardwareConcurrency for max speed.
 
-import { Noir } from '@noir-lang/noir_js';
-import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
-
+// Do NOT import these at the top level — @aztec/bb.js contains a top-level
+// await that blocks the entire module graph for 30+ seconds on page load,
+// making every button in the app appear dead. Load lazily inside initProver.
 let noir    = null;
 let backend = null;
 
 export async function initProver(onStatus) {
   if (noir) return;
   if (onStatus) onStatus('Loading ZK circuit…');
+
+  // Lazy-load the heavy WASM packages only when actually needed
+  const [{ Noir }, { BarretenbergBackend }] = await Promise.all([
+    import('@noir-lang/noir_js'),
+    import('@noir-lang/backend_barretenberg'),
+  ]);
 
   let artifact;
   try {
