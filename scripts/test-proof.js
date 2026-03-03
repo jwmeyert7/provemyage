@@ -31,21 +31,21 @@ async function main() {
 
   // All numeric inputs are passed as strings in @noir-lang/noir_js@0.36.0
   const inputs = {
-    // Private — would come from passport MRZ in real use
+    // Private - would come from passport MRZ in real use
     birth_year:   '1990',
     birth_month:  '5',
     birth_day:    '15',
     nullifier_seed: '0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
 
-    // Public — minimum age threshold (today − 18 years)
+    // Public - minimum age threshold (today - 18 years)
     threshold_year:  String(threshold.getUTCFullYear()),
     threshold_month: String(threshold.getUTCMonth() + 1),
     threshold_day:   String(threshold.getUTCDate()),
 
-    // Public — face hash (normally computed from MediaPipe landmarks)
+    // Public - face hash (normally computed from MediaPipe landmarks)
     face_hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcd',
 
-    // Public — Unix timestamp (seconds) as string
+    // Public - Unix timestamp (seconds) as string
     current_timestamp: String(Math.floor(Date.now() / 1000)),
 
     // No upper bound for this test
@@ -70,7 +70,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\nGenerating proof (this may take 30–90 seconds)…');
+  console.log('\nGenerating proof (this may take 30-90 seconds)…');
   const t0 = Date.now();
 
   let proof, publicInputs;
@@ -95,7 +95,7 @@ async function main() {
   }
 
   if (!isValid) {
-    console.error('Proof is invalid — something went wrong.');
+    console.error('Proof is invalid - something went wrong.');
     process.exit(1);
   }
 

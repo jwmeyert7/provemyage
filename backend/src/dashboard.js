@@ -8,7 +8,7 @@ import { requireApiKey } from './auth.js';
 
 export const dashboardRouter = Router();
 
-// GET /dashboard/stats — current month usage for the authenticated verifier
+// GET /dashboard/stats - current month usage for the authenticated verifier
 dashboardRouter.get('/stats', requireApiKey, async (req, res) => {
   try {
     const stats = await getUsageStats(req.apiKeyMeta.hash);
@@ -18,7 +18,7 @@ dashboardRouter.get('/stats', requireApiKey, async (req, res) => {
   }
 });
 
-// GET /dashboard/history — last 30 verification events (stored as a Redis list)
+// GET /dashboard/history - last 30 verification events (stored as a Redis list)
 dashboardRouter.get('/history', requireApiKey, async (req, res) => {
   try {
     const redis = getRedis();

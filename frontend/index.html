@@ -18,29 +18,29 @@
   <style>
     /* ── Design tokens ─────────────────────────────────────────────────────── */
     :root {
-      --bg:        #f0f2f7;
-      --surface:   #ffffff;
-      --text:      #1d2035;
-      --text-muted:#64748b;
-      --accent:    #5c6bc0;
-      --accent-dk: #4e5bb0;
-      --success:   #22c55e;
-      --error:     #ef4444;
-      --warn:      #f59e0b;
-      --border:    #dde1ec;
-      --radius:    12px;
-      --shadow:    0 1px 8px rgba(29,32,53,.08);
-      --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+     --bg:        #f0f2f7;
+     --surface:   #ffffff;
+     --text:      #1d2035;
+     --text-muted:#64748b;
+     --accent:    #5c6bc0;
+     --accent-dk: #4e5bb0;
+     --success:   #22c55e;
+     --error:     #ef4444;
+     --warn:      #f59e0b;
+     --border:    #dde1ec;
+     --radius:    12px;
+     --shadow:    0 1px 8px rgba(29,32,53,.08);
+     --font:     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     [data-theme="dark"] {
-      --bg:        #10121c;
-      --surface:   #181b28;
-      --text:      #dde2f0;
-      --text-muted:#8892b0;
-      --accent:    #7f8cdf;
-      --accent-dk: #6f7bd0;
-      --border:    #232638;
-      --shadow:    0 2px 14px rgba(0,0,0,.4);
+     --bg:        #10121c;
+     --surface:   #181b28;
+     --text:      #dde2f0;
+     --text-muted:#8892b0;
+     --accent:    #7f8cdf;
+     --accent-dk: #6f7bd0;
+     --border:    #232638;
+     --shadow:    0 2px 14px rgba(0,0,0,.4);
     }
 
     /* Prevent .btn and similar classes from overriding the hidden attribute */
@@ -551,6 +551,98 @@
       white-space: nowrap;
     }
 
+    /* ── Privacy note (inline collapsible) ───────────────────────────────────── */
+    .privacy-note-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: .78rem;
+      cursor: pointer;
+      padding: .35rem 0;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      transition: color .15s;
+    }
+    .privacy-note-toggle:hover { color: var(--accent); }
+    .privacy-note-chevron {
+      font-size: .6rem;
+      transition: transform .2s;
+    }
+    .privacy-note-toggle.open .privacy-note-chevron { transform: rotate(180deg); }
+    .privacy-note-body {
+      display: none;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .7rem .85rem;
+      font-size: .78rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-top: .35rem;
+    }
+    .privacy-note-body.open { display: block; }
+    .privacy-note-body a { color: var(--accent); text-decoration: none; }
+    .privacy-note-body a:hover { text-decoration: underline; }
+
+    /* ── Selective disclosure checkboxes ───────────────────────────────────── */
+    .disclosure-section {
+      margin: .85rem 0;
+      padding: .8rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .disclosure-title {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: .55rem;
+    }
+    .disclosure-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .35rem .75rem;
+    }
+    .disclosure-item {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .82rem;
+      color: var(--text);
+    }
+    .disclosure-item input[type=checkbox] { flex-shrink: 0; }
+    .disclosure-item .disc-detail {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-left: .25rem;
+    }
+
+    /* ── Disclosed fields in verify result ─────────────────────────────────── */
+    .disclosed-fields {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .65rem .9rem;
+      font-size: .8rem;
+      text-align: left;
+      margin: .75rem auto 0;
+      max-width: 320px;
+    }
+    .disclosed-field-row {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+      padding: .2rem 0;
+    }
+    .disclosed-field-row + .disclosed-field-row {
+      border-top: 1px solid var(--border);
+    }
+    .disclosed-field-label { color: var(--text-muted); }
+    .disclosed-field-value { color: var(--text); font-weight: 600; text-align: right; }
+
     /* ── Starfield background ────────────────────────────────────────────────── */
     #stars-canvas {
       position: fixed;
@@ -595,7 +687,7 @@
   <main class="main">
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- CREATE MODE                                                          -->
+    <!-- CREATE MODE                                                         -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div class="mode-panel" data-mode="create">
 
@@ -627,6 +719,26 @@
 
         <div style="margin-top:.75rem; text-align:center">
           <button class="btn btn-secondary" id="passportCameraBtn">📸 Scan with camera</button>
+        </div>
+
+        <div style="margin-top:.75rem; text-align:center">
+          <button class="privacy-note-toggle" id="privacyNoteToggle">
+            🔒 How is my personal data kept safe? <span class="privacy-note-chevron">▼</span>
+          </button>
+          <div class="privacy-note-body" id="privacyNoteBody">
+            Your passport photo never leaves your device. The text is read using
+            <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>
+            (OCR running locally in your browser via WebAssembly). No image, birthdate, or personal data
+            is ever transmitted to any server. The only thing that leaves your device is the
+            zero-knowledge proof, which mathematically proves your age without containing any
+            personal information.
+            <br><br>
+            This is verifiable. The
+            <a href="https://github.com/jwmeyert7/provemyage/blob/main/frontend/src/mrz.js" target="_blank" rel="noopener">passport scanning code</a>
+            and
+            <a href="https://github.com/jwmeyert7/provemyage/blob/main/circuits/age_proof/src/main.nr" target="_blank" rel="noopener">ZK circuit</a>
+            are fully open source.
+          </div>
         </div>
 
         <video id="passport-video" autoplay playsinline hidden></video>
@@ -686,6 +798,33 @@
           </div>
         </div>
 
+        <!-- Selective disclosure: optional fields to include in proof -->
+        <div class="disclosure-section" id="disclosure-section">
+          <div class="disclosure-title">Optional: share additional info (ZK-proven)</div>
+          <div class="disclosure-grid">
+            <label class="disclosure-item">
+              <input type="checkbox" id="disc-birthdate" />
+              Birthdate <span class="disc-detail" id="disc-birthdate-val"></span>
+            </label>
+            <label class="disclosure-item">
+              <input type="checkbox" id="disc-age" />
+              Exact age <span class="disc-detail" id="disc-age-val"></span>
+            </label>
+            <label class="disclosure-item">
+              <input type="checkbox" id="disc-nationality" />
+              Nationality <span class="disc-detail" id="disc-nationality-val"></span>
+            </label>
+            <label class="disclosure-item">
+              <input type="checkbox" id="disc-gender" />
+              Gender <span class="disc-detail" id="disc-gender-val"></span>
+            </label>
+            <label class="disclosure-item" style="grid-column:span 2">
+              <input type="checkbox" id="disc-name" />
+              Name <span class="disc-detail" id="disc-name-val"></span>
+            </label>
+          </div>
+        </div>
+
         <button class="btn btn-primary btn-large" id="generateProofBtn">
           🔐 Generate ZK Proof
         </button>
@@ -706,7 +845,7 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- SHOW QR MODE                                                         -->
+    <!-- SHOW QR MODE                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div class="mode-panel" data-mode="show" hidden>
       <div class="card">
@@ -773,7 +912,7 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- VERIFY MODE                                                          -->
+    <!-- VERIFY MODE                                                         -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div class="mode-panel" data-mode="verify" hidden>
       <div class="card">
@@ -800,6 +939,7 @@
           <span id="result-icon" class="result-icon"></span>
           <div id="result-text" class="result-text"></div>
           <div id="attestation-status" style="font-size:.8rem; color:var(--text-muted); margin-bottom:.75rem"></div>
+          <div id="verify-disclosed" class="disclosed-fields" hidden></div>
           <div id="verify-record" class="verify-record" hidden>
             <div class="verify-record-row">
               <span class="verify-record-label">Credential ID</span>
@@ -813,7 +953,7 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
-    <!-- FAQ MODE                                                              -->
+    <!-- FAQ MODE                                                             -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div class="mode-panel" data-mode="faq" hidden>
       <div class="card">
@@ -824,7 +964,7 @@
 
         <div class="faq-item">
           <div class="faq-q">What is ProveMyAge?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">ProveMyAge lets you prove your age from a real passport without showing your name, birthdate, or any personal information to anyone. You generate a cryptographic proof on your own device. The verifier learns only that you meet an age threshold — nothing else.</div>
+          <div class="faq-a">ProveMyAge lets you prove your age from a real passport without showing your name, birthdate, or any personal information to anyone. You generate a cryptographic proof on your own device. The verifier learns only that you meet an age threshold - nothing else.</div>
         </div>
 
         <div class="faq-item">
@@ -834,7 +974,7 @@
 
         <div class="faq-item">
           <div class="faq-q">Does it work with any passport?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">Yes — any passport that follows the <a href="https://en.wikipedia.org/wiki/Machine-readable_passport" target="_blank" rel="noopener">ICAO 9303 standard</a>, which is essentially every modern passport issued by any country. The passport must show the two-line MRZ text strip at the bottom of the photo page.</div>
+          <div class="faq-a">Yes - any passport that follows the <a href="https://en.wikipedia.org/wiki/Machine-readable_passport" target="_blank" rel="noopener">ICAO 9303 standard</a>, which is essentially every modern passport issued by any country. The passport must show the two-line MRZ text strip at the bottom of the photo page.</div>
         </div>
 
         <div class="faq-item">
@@ -846,29 +986,29 @@
 
         <div class="faq-item">
           <div class="faq-q">Does the app upload my passport photo?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">No. Your passport photo is processed entirely on your device using WebAssembly-based OCR. No image, no birthdate, and no personal data ever leaves your device. You can verify this by turning off WiFi before scanning — it works completely offline up to the proof generation step.</div>
+          <div class="faq-a">No. Your passport photo is processed entirely on your device using WebAssembly-based OCR. No image, no birthdate, and no personal data ever leaves your device. You can verify this by turning off WiFi before scanning - it works completely offline up to the proof generation step.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">What does the verifier actually see when they scan my QR?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">Only two things: the age threshold you chose to prove (e.g. "18+" or "25+"), and a unique Verification ID. They cannot see your name, exact age, birthdate, nationality, or any other personal information.</div>
+          <div class="faq-a">By default, only the age threshold you chose to prove (e.g. "18+" or "25+") and a unique Verification ID. They cannot see your name, exact age, birthdate, nationality, or any other personal information unless you explicitly choose to share it. On the proof generation step, you can optionally check boxes to disclose specific fields (birthdate, exact age, nationality, gender, name) - each one is ZK-proven alongside your age proof.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">What is the Verification ID (the 0x... number)?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">It's a unique receipt number for that specific verification — like a transaction ID. It's a cryptographic hash computed from a random secret and your birthdate inside the ZK proof. It contains no personal information and cannot be reversed. Verifiers can log it as proof that a verification occurred, but it tells them nothing about who verified or what their age is.</div>
+          <div class="faq-a">It's a unique receipt number for that specific verification - like a transaction ID. It's a cryptographic hash computed from a random secret and your birthdate inside the ZK proof. It contains no personal information and cannot be reversed. Verifiers can log it as proof that a verification occurred, but it tells them nothing about who verified or what their age is.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">Does ProveMyAge store any of my information?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">The backend stores almost nothing. While your QR is live (90 seconds), it temporarily holds the proof data so a verifier can check it. Once the QR is scanned or expires, that data is deleted. The only thing permanently recorded is that the Verification ID was used — one bit of information, with no name or personal data attached.</div>
+          <div class="faq-a">The backend stores almost nothing. While your QR is live (90 seconds), it temporarily holds the proof data so a verifier can check it. Once the QR is scanned or expires, that data is deleted. The only thing permanently recorded is that the Verification ID was used - one bit of information, with no name or personal data attached.</div>
         </div>
 
         <div class="faq-section-title">How it works</div>
 
         <div class="faq-item">
           <div class="faq-q">What is a zero-knowledge proof?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">A zero-knowledge proof lets you convince someone that a statement is true without revealing any information beyond the truth of that statement. Here, the statement is "my birthdate is before X" — and the proof convinces the verifier of that fact without ever revealing the actual birthdate. The math behind it is done by <a href="https://noir-lang.org" target="_blank" rel="noopener">Noir</a> and <a href="https://github.com/AztecProtocol/barretenberg" target="_blank" rel="noopener">Barretenberg</a>, running entirely on your device.</div>
+          <div class="faq-a">A zero-knowledge proof lets you convince someone that a statement is true without revealing any information beyond the truth of that statement. Here, the statement is "my birthdate is before X" - and the proof convinces the verifier of that fact without ever revealing the actual birthdate. The math behind it is done by <a href="https://noir-lang.org" target="_blank" rel="noopener">Noir</a> and <a href="https://github.com/AztecProtocol/barretenberg" target="_blank" rel="noopener">Barretenberg</a>, running entirely on your device.</div>
         </div>
 
         <div class="faq-item">
@@ -895,12 +1035,12 @@
 
         <div class="faq-item">
           <div class="faq-q">What happens if my passport scan fails?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">Make sure the photo shows the full MRZ strip — the two lines of densely packed text at the very bottom of the passport photo page. Good lighting and a flat, non-blurry image make a big difference. Avoid shadows across the text, and make sure the entire bottom strip is in frame.</div>
+          <div class="faq-a">Make sure the photo shows the full MRZ strip - the two lines of densely packed text at the very bottom of the passport photo page. Good lighting and a flat, non-blurry image make a big difference. Avoid shadows across the text, and make sure the entire bottom strip is in frame.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">Is the source code available?<span class="faq-chevron">▼</span></div>
-          <div class="faq-a">Yes. The full source is open and auditable. A closed-source age verification app would require you to trust our claims — open source means you (or a developer you trust) can verify them. <a href="https://github.com/yourusername/provemyage" target="_blank" rel="noopener">View on GitHub.</a></div>
+          <div class="faq-a">Yes. The full source is open and auditable. A closed-source age verification app would require you to trust our claims - open source means you (or a developer you trust) can verify them. <a href="https://github.com/yourusername/provemyage" target="_blank" rel="noopener">View on GitHub.</a></div>
         </div>
       </div>
     </div>
@@ -949,7 +1089,7 @@
       });
     }
 
-    // Planets (dark mode) — subtle, slightly larger, colored glow
+    // Planets (dark mode) - subtle, slightly larger, colored glow
     for (var j = 0; j < 4; j++) {
       var col = PLANET_COLS[j];
       particles.push({ type:'planet', col:col,
@@ -960,7 +1100,7 @@
       });
     }
 
-    // Birds (light mode) — simple flapping V shapes
+    // Birds (light mode) - simple flapping V shapes
     for (var k = 0; k < 11; k++) {
       particles.push({ type:'bird',
         x: rnd(0, canvas.width),  y: rnd(0, canvas.height),
@@ -1054,6 +1194,15 @@
       if (!wasOpen) item.classList.add('open');
     });
   });
+  // Privacy note toggle on Step 1
+  var privBtn = document.getElementById('privacyNoteToggle');
+  var privBody = document.getElementById('privacyNoteBody');
+  if (privBtn && privBody) {
+    privBtn.addEventListener('click', function() {
+      var open = privBody.classList.toggle('open');
+      privBtn.classList.toggle('open', open);
+    });
+  }
 </script>
 <script type="module" src="/src/main.js"></script>
 </body>

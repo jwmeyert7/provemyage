@@ -8,7 +8,7 @@ import { spendNullifier } from './nullifier.js';
 import { requireApiKey, createApiKey } from './auth.js';
 import { dashboardRouter, recordEvent } from './dashboard.js';
 
-// In-memory credential store — proof is too large for a QR code so the
+// In-memory credential store - proof is too large for a QR code so the
 // frontend POSTs it here and the QR just carries a short token.
 // Credentials expire after 5 minutes.
 const pendingCreds = new Map();
@@ -36,7 +36,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '2mb' }));
 
-// Global rate limit — 60 requests/minute per IP
+// Global rate limit - 60 requests/minute per IP
 app.use(rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false }));
 
 // ── Routes ──────────────────────────────────────────────────────────────────
@@ -47,11 +47,11 @@ app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 /**
  * POST /verify
  * Body: {
- *   proof:         number[]   — ZK proof bytes
- *   publicInputs:  string[]   — public inputs (hex strings, circuit output order)
- *   nullifier:     string     — nullifier hex (0x…) extracted from publicInputs
- *   timestamp:     number     — Unix seconds embedded in the proof
- *   ageRangeLabel: string     — human-readable label e.g. "18+"
+ *   proof:         number[]   - ZK proof bytes
+ *   publicInputs:  string[]   - public inputs (hex strings, circuit output order)
+ *   nullifier:     string     - nullifier hex (0x…) extracted from publicInputs
+ *   timestamp:     number     - Unix seconds embedded in the proof
+ *   ageRangeLabel: string     - human-readable label e.g. "18+"
  * }
  *
  * Returns: { verified: boolean, ageRangeLabel: string }
@@ -70,7 +70,7 @@ app.post('/verify', async (req, res) => {
     body = stored;
   }
 
-  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel } = body;
+  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel, disclosed } = body;
 
   // ── Input validation ────────────────────────────────────────────────────
   if (!Array.isArray(proof) || !Array.isArray(publicInputs)) {
@@ -112,18 +112,18 @@ app.post('/verify', async (req, res) => {
   // ── Record analytics event ──────────────────────────────────────────────
   await recordEvent(req.apiKeyMeta?.hash, { ageRangeLabel, verified: true, timestamp });
 
-  res.json({ verified: true, ageRangeLabel: ageRangeLabel ?? 'Unknown', nullifier });
+  res.json({ verified: true, ageRangeLabel: ageRangeLabel ?? 'Unknown', nullifier, disclosed: disclosed ?? null });
 });
 
 // ── Credential store (short token → proof data for QR size reduction) ────────
 /**
  * POST /credentials
  * Body: { proof, publicInputs, nullifier, timestamp, ageRangeLabel }
- * Returns: { token } — a UUID the QR code carries instead of the full proof
+ * Returns: { token } - a UUID the QR code carries instead of the full proof
  * No API key required; rate-limited by global limiter.
  */
 app.post('/credentials', async (req, res) => {
-  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel } = req.body ?? {};
+  const { proof, publicInputs, nullifier, timestamp, ageRangeLabel, disclosed } = req.body ?? {};
   if (!Array.isArray(proof) || !Array.isArray(publicInputs)) {
     return res.status(400).json({ error: 'proof and publicInputs must be arrays' });
   }
@@ -133,7 +133,7 @@ app.post('/credentials', async (req, res) => {
   if (typeof timestamp !== 'number') {
     return res.status(400).json({ error: 'timestamp must be a number' });
   }
-  const token = storeCred({ proof, publicInputs, nullifier, timestamp, ageRangeLabel });
+  const token = storeCred({ proof, publicInputs, nullifier, timestamp, ageRangeLabel, disclosed: disclosed ?? null });
   res.json({ token, expiresIn: 5 * 60 });
 });
 

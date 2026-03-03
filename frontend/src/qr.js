@@ -1,18 +1,18 @@
 // QR code generation (user → verifier) and scanning (verifier side).
 // v2 QR: the proof is uploaded to the backend; the QR carries only a short token.
-// v1 QR (legacy): full proof embedded — kept for backwards-compatible scanning.
+// v1 QR (legacy): full proof embedded - kept for backwards-compatible scanning.
 
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
 // ── Upload credential to backend, get short token ─────────────────────────
 async function uploadCredential(credential, backendUrl) {
-  const { proof, publicInputs, nullifier, ageRangeLabel } = credential;
+  const { proof, publicInputs, nullifier, ageRangeLabel, disclosed } = credential;
   const timestamp = Math.floor(Date.now() / 1000);
   const res = await fetch(`${backendUrl}/credentials`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ proof, publicInputs, nullifier, timestamp, ageRangeLabel }),
+    body: JSON.stringify({ proof, publicInputs, nullifier, timestamp, ageRangeLabel, disclosed }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -50,7 +50,7 @@ export async function renderQR(payload, canvas, opts = {}) {
 export async function showCredentialQR(credential, canvas, ttlSeconds = 60, backendUrl = 'http://localhost:3001') {
   const { token } = await uploadCredential(credential, backendUrl);
 
-  // Compact v2 payload — just the token + age label
+  // Compact v2 payload - just the token + age label
   const payload = JSON.stringify({ v: 2, t: token, ar: credential.ageRangeLabel });
   await renderQR(payload, canvas);
 
@@ -85,12 +85,12 @@ export function scanQRFromCamera(videoEl, onFrame) {
       if (qr) {
         try {
           const parsed = parseQRPayload(qr.data);
-          // Valid ProveMyAge QR — stop scanning and resolve
+          // Valid ProveMyAge QR - stop scanning and resolve
           active = false;
           resolve(parsed);
           return;
         } catch {
-          // Not a ProveMyAge QR (wrong format, product barcode, etc.) — keep scanning silently
+          // Not a ProveMyAge QR (wrong format, product barcode, etc.) - keep scanning silently
         }
       }
 
@@ -133,7 +133,7 @@ export function parseQRPayload(raw) {
   try { data = JSON.parse(raw); } catch { throw new Error('QR code does not contain valid JSON'); }
 
   if (data.v === 2) {
-    // Token-based — backend lookup required for verification
+    // Token-based - backend lookup required for verification
     return {
       version:       2,
       token:         data.t,

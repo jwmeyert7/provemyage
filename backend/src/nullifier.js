@@ -24,7 +24,7 @@ function initRedis() {
   redis.on('ready', () => { redisReady = true;  console.log('[redis] connected'); });
   redis.on('error', ()  => { redisReady = false; });
   redis.connect().catch(() => {
-    console.warn('[redis] not available — using in-memory nullifier store (demo mode)');
+    console.warn('[redis] not available - using in-memory nullifier store (demo mode)');
   });
 }
 
@@ -47,7 +47,7 @@ export async function spendNullifier(nullifier) {
       const result = await redis.set(key, '1', 'NX', 'EX', NULLIFIER_RETENTION_SECONDS);
       return result === 'OK';
     } catch {
-      // Redis hiccup — fall through to in-memory
+      // Redis hiccup - fall through to in-memory
     }
   }
   // In-memory fallback

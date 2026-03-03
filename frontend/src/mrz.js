@@ -1,5 +1,5 @@
 // MRZ (Machine Readable Zone) extraction from passport images.
-// Uses Tesseract.js WASM — all processing is local, zero network requests.
+// Uses Tesseract.js WASM - all processing is local, zero network requests.
 // Implements ICAO 9303 TD3 (standard passport) check-digit validation.
 
 import { createWorker } from 'tesseract.js';
@@ -24,6 +24,20 @@ function validateCD(field, digit) {
   return checkDigit(field) === parseInt(digit, 10);
 }
 
+// ── TD3 line-1 parser ────────────────────────────────────────────────────────
+// Line 1 format (44 chars):
+//  [0]    Document type ('P')
+//  [1]    Type secondary ('<' or letter)
+//  [2-4]  Issuing state (3 chars)
+//  [5-43] Name: SURNAME<<GIVEN<NAMES<<<...
+function parseLine1(line) {
+  const nameField = line.slice(5).replace(/<+$/, ''); // trim trailing fillers
+  const parts = nameField.split('<<');
+  const surname    = (parts[0] || '').replace(/</g, ' ').trim();
+  const givenNames = (parts.slice(1).join(' ') || '').replace(/</g, ' ').trim();
+  return { surname, givenNames };
+}
+
 // ── TD3 line-2 parser ────────────────────────────────────────────────────────
 // Line 2 format (44 chars):
 //  [0-8]  Document number  [9] check  [10-12] Nationality
@@ -36,6 +50,7 @@ function parseLine2(line) {
   const docCheck = line[9];
   const birth    = line.slice(13, 19);
   const bCheck   = line[19];
+  const sex      = line[20]; // 'M', 'F', or '<' (unspecified)
   const expiry   = line.slice(21, 27);
   const eCheck   = line[27];
   const optional = line.slice(28, 42);
@@ -57,8 +72,11 @@ function parseLine2(line) {
   // Persons born in future 2-digit years are impossible; assume 19xx if yy > (current - 2000 + 1)
   const yyyy = yy > (currentYear - 2000 + 1) ? 1900 + yy : 2000 + yy;
 
+  const gender = sex === 'M' ? 'M' : sex === 'F' ? 'F' : null;
+
   return { birthYear: yyyy, birthMonth: mm, birthDay: dd,
            nationality: line.slice(10, 13).replace(/</g, ''),
+           gender,
            documentNumber: docNum.replace(/</g, '') };
 }
 
@@ -68,7 +86,7 @@ function normalizeLine(raw) {
 }
 
 function extractMRZ(ocrText) {
-  // MRZ lines are densely packed uppercase text — filter plausible lines
+  // MRZ lines are densely packed uppercase text - filter plausible lines
   const candidates = ocrText
     .split('\n')
     .map(l => l.replace(/\s/g, '').toUpperCase())
@@ -80,7 +98,11 @@ function extractMRZ(ocrText) {
     // TD3 line 1 starts with 'P' (passport) or 'V' (visa)
     if (l1[0] !== 'P' && l1[0] !== 'V') continue;
     try {
-      return { line1: l1, line2: l2, parsed: parseLine2(l2) };
+      const parsed = parseLine2(l2);
+      const { surname, givenNames } = parseLine1(l1);
+      parsed.surname    = surname;
+      parsed.givenNames = givenNames;
+      return { line1: l1, line2: l2, parsed };
     } catch {
       continue;
     }
@@ -92,17 +114,17 @@ function extractMRZ(ocrText) {
 
 /**
  * Extract birth date from a passport image file.
- * Everything runs locally in WebAssembly — no network requests.
+ * Everything runs locally in WebAssembly - no network requests.
  *
  * @param {File|Blob|string} imageSource - image file or data URL
- * @param {Function} [onProgress]        - progress callback (0–100)
- * @returns {Promise<{birthYear, birthMonth, birthDay, nationality}>}
+ * @param {Function} [onProgress]       - progress callback (0-100)
+ * @returns {Promise<{birthYear, birthMonth, birthDay, nationality, gender, surname, givenNames}>}
  */
 export async function extractBirthDateFromPassport(imageSource, onProgress) {
   // In Tesseract.js v5 the third argument is WorkerOptions (logger, langPath, etc.).
   // Engine parameters must be set via worker.setParameters() after creation.
   // Map Tesseract phases to a monotonically increasing bar.
-  // Phase 0 (loading/init): 0–40%. Phase 1 (recognizing): 40–88%.
+  // Phase 0 (loading/init): 0-40%. Phase 1 (recognizing): 40-88%.
   let phase = 0;
   const worker = await createWorker('eng', 1, {
     logger: m => {

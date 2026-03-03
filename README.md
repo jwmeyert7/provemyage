@@ -4,11 +4,11 @@ Zero-knowledge age verification from a real passport. Proves you meet an age thr
 
 ## How It Works
 
-1. **Passport OCR** — Tesseract.js WASM reads the MRZ (machine-readable zone) locally. No photo ever leaves the browser.
-2. **Selfie binding** — MediaPipe FaceMesh computes a normalized face embedding hash. Photo immediately discarded.
-3. **Legal attestation** — ECDSA-signed declaration using Web Crypto API. Key lives in browser IndexedDB.
-4. **ZK proof** — Noir circuit (Barretenberg) proves birth date satisfies the age threshold without revealing it.
-5. **QR credential** — 60-second single-use QR; backend checks proof validity + Redis nullifier (anti-replay).
+1. **Passport OCR** - Tesseract.js WASM reads the MRZ (machine-readable zone) locally. No photo ever leaves the browser.
+2. **Selfie binding** - MediaPipe FaceMesh computes a normalized face embedding hash. Photo immediately discarded.
+3. **Legal attestation** - ECDSA-signed declaration using Web Crypto API. Key lives in browser IndexedDB.
+4. **ZK proof** - Noir circuit (Barretenberg) proves birth date satisfies the age threshold without revealing it.
+5. **QR credential** - 60-second single-use QR; backend checks proof validity + Redis nullifier (anti-replay).
 
 ## Trust Model
 
@@ -16,7 +16,7 @@ Zero-knowledge age verification from a real passport. Proves you meet an age thr
 |-------|-----------|
 | Real document | ICAO 9303 MRZ check digits (5 independent checksums) |
 | Identity binding | MediaPipe face hash committed in the ZK proof |
-| Legal accountability | ECDSA-signed attestation — misuse is federal fraud |
+| Legal accountability | ECDSA-signed attestation - misuse is federal fraud |
 | Anti-replay | Single-use nullifier stored in Redis with 7-day retention |
 
 Verify claims in DevTools → Network tab: zero requests during passport processing.
@@ -37,7 +37,7 @@ Verify claims in DevTools → Network tab: zero requests during passport process
 
 ### Prerequisites
 - Node.js ≥ 18
-- Redis running locally (`redis-server`) — or set `REDIS_URL` in backend `.env`
+- Redis running locally (`redis-server`) - or set `REDIS_URL` in backend `.env`
 
 ### 1. Compile the Noir Circuit
 
@@ -80,8 +80,8 @@ Open http://localhost:5173. The COEP/COOP headers Vite sets are required for Bar
 
 ```bash
 curl -X POST http://localhost:3001/admin/keys \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","tier":"free"}'
+ -H 'Content-Type: application/json' \
+ -d '{"email":"you@example.com","tier":"free"}'
 ```
 
 Paste the returned `apiKey` into the Verify tab of the app.
@@ -98,7 +98,7 @@ Age thresholds are computed client-side in `frontend/src/main.js` (`AGE_PRESETS`
 |-------|-----------|---------|
 | `birth_year/month/day` | Private | Actual birthdate from passport MRZ |
 | `nullifier_seed` | Private | Random scalar; makes nullifier unguessable |
-| `threshold_year/month/day` | Public | Today − min age (proves age ≥ min) |
+| `threshold_year/month/day` | Public | Today - min age (proves age ≥ min) |
 | `face_hash` | Public | Binds selfie to this proof |
 | `current_timestamp` | Public | For 60-second expiry |
 | `has_upper_bound`, `upper_*` | Public | Optional maximum age (e.g. Under 18) |

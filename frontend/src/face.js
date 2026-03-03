@@ -1,6 +1,6 @@
 // Face embedding and hashing using MediaPipe FaceMesh.
 // Computes a SHA-256 hash of normalized facial landmarks.
-// The photo is never stored — only the hash leaves this function.
+// The photo is never stored - only the hash leaves this function.
 //
 // MediaPipe FaceMesh is loaded from CDN (468 3D landmarks per face).
 // For production offline deployment, self-host the WASM assets.
@@ -83,7 +83,7 @@ async function hashEmbedding(floatArray) {
 
 /**
  * Detect a face in the provided image/video element and return its hash.
- * The image is processed locally — no pixels leave the browser.
+ * The image is processed locally - no pixels leave the browser.
  *
  * @param {HTMLImageElement|HTMLVideoElement|HTMLCanvasElement} source
  * @returns {Promise<{faceHash: string}>}

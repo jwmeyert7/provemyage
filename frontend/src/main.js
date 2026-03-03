@@ -4,13 +4,39 @@
 // accepts it as a public input; the ZK proof proves age, not identity).
 
 import { extractBirthDateFromPassport, thresholdDateForAge, upperBoundDateForAge } from './mrz.js';
-import { generateAgeProof, initProver } from './zk.js';
+import { generateAgeProof, initProver, packNationality, packGender, packNameToField } from './zk.js';
 import { createAttestation, saveCredential, listCredentials, randomFieldElement, verifyAttestation } from './crypto.js';
 import { showCredentialQR, scanQRFromCamera, scanQRFromFile } from './qr.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function formatBirthdate(bd) {
   return `${MONTHS[bd.birthMonth - 1]} ${bd.birthDay}, ${bd.birthYear}`;
+}
+function computeAge(bd) {
+  const d = new Date();
+  const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, day = d.getUTCDate();
+  let age = y - bd.birthYear;
+  if (m < bd.birthMonth || (m === bd.birthMonth && day < bd.birthDay)) age--;
+  return age;
+}
+
+// Populate disclosure checkbox preview values from parsed MRZ data
+function populateDisclosurePreviews() {
+  const bd = state.birthDate;
+  if (!bd) return;
+  const bv = $('disc-birthdate-val');
+  if (bv) bv.textContent = `(${formatBirthdate(bd)})`;
+  const av = $('disc-age-val');
+  if (av) av.textContent = `(${computeAge(bd)})`;
+  const nv = $('disc-nationality-val');
+  if (nv) nv.textContent = bd.nationality ? `(${bd.nationality})` : '';
+  const gv = $('disc-gender-val');
+  if (gv) gv.textContent = bd.gender ? `(${bd.gender})` : '(not specified)';
+  const nmv = $('disc-name-val');
+  if (nmv) {
+    const name = [bd.surname, bd.givenNames].filter(Boolean).join(', ');
+    nmv.textContent = name ? `(${name})` : '';
+  }
 }
 
 // Dummy face hash - 31 zero bytes, valid BN254 field element
@@ -19,7 +45,7 @@ const DUMMY_FACE_HASH = '0x' + '00'.repeat(31);
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   mode: 'create',   // 'create' | 'show' | 'verify'
-  step: 1,          // 1–3 for create mode
+  step: 1,          // 1-3 for create mode
   birthDate:    null,
   faceHash:     DUMMY_FACE_HASH,
   attestation:  null,
@@ -109,6 +135,15 @@ function startOver() {
   if (bdEl) { bdEl.hidden = true; bdEl.textContent = ''; }
   const ps = $('proof-summary');
   if (ps) { ps.hidden = true; ps.innerHTML = ''; }
+  // Reset disclosure checkboxes
+  ['disc-birthdate','disc-age','disc-nationality','disc-gender','disc-name'].forEach(id => {
+    const cb = $(id);
+    if (cb) cb.checked = false;
+  });
+  ['disc-birthdate-val','disc-age-val','disc-nationality-val','disc-gender-val','disc-name-val'].forEach(id => {
+    const el = $(id);
+    if (el) el.textContent = '';
+  });
   const cs = $('qr-cred-summary');
   if (cs) cs.hidden = true;
   const msBtn = $('markScannedBtn');
@@ -164,6 +199,7 @@ function initStep1() {
 
       setStatus('s1-status', `Birthdate confirmed: ${formatBirthdate(state.birthDate)} \u2713`, 'success');
       $('s1-progress').hidden = true;
+      populateDisclosurePreviews();
       setTimeout(() => {
         setStep(2);
         const bdEl = $('attest-birthdate-display');
@@ -180,7 +216,7 @@ function initStep1() {
 
   on('passportCameraBtn', 'click', async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setStatus('s1-status', 'Live camera requires HTTPS. Tap the upload area above — your device will offer a "Take Photo" option.', 'error');
+      setStatus('s1-status', 'Live camera requires HTTPS. Tap the upload area above - your device will offer a "Take Photo" option.', 'error');
       return;
     }
     try {
@@ -217,6 +253,7 @@ function initStep1() {
         );
         state.birthDate = await Promise.race([extractBirthDateFromPassport(blob), timeout]);
         setStatus('s1-status', `Birthdate confirmed: ${formatBirthdate(state.birthDate)} \u2713`, 'success');
+        populateDisclosurePreviews();
         setTimeout(() => {
           setStep(2);
           const bdEl = $('attest-birthdate-display');
@@ -316,6 +353,26 @@ function initStep3() {
     const threshold = minAge ? thresholdDateForAge(minAge) : { year: 9999, month: 12, day: 31 };
     const upper     = maxAge ? upperBoundDateForAge(maxAge) : null;
 
+    // Read selective disclosure flags
+    const revealBirthdate   = $('disc-birthdate')?.checked ?? false;
+    const revealAge         = $('disc-age')?.checked ?? false;
+    const revealNationality = $('disc-nationality')?.checked ?? false;
+    const revealGender      = $('disc-gender')?.checked ?? false;
+    const revealName        = $('disc-name')?.checked ?? false;
+
+    // Encode MRZ fields for the circuit
+    const bd = state.birthDate;
+    const nationalityCode = packNationality(bd.nationality || '');
+    const genderCode      = packGender(bd.gender);
+    const mrzName = [bd.surname || '', bd.givenNames || ''].join('<<');
+    const namePart1 = packNameToField(mrzName.slice(0, 31));
+    const namePart2 = packNameToField(mrzName.slice(31, 62));
+
+    const refDate = new Date();
+    const refYear  = refDate.getUTCFullYear();
+    const refMonth = refDate.getUTCMonth() + 1;
+    const refDay   = refDate.getUTCDate();
+
     $('generateProofBtn').disabled = true;
     $('proof-progress').hidden     = false;
 
@@ -325,10 +382,10 @@ function initStep3() {
       await initProver(setS);
 
       const proofStart = performance.now();
-      const { proof, publicInputs, nullifier } = await generateAgeProof({
-        birthYear:  state.birthDate.birthYear,
-        birthMonth: state.birthDate.birthMonth,
-        birthDay:   state.birthDate.birthDay,
+      const { proof, publicInputs, nullifier, disclosed } = await generateAgeProof({
+        birthYear:  bd.birthYear,
+        birthMonth: bd.birthMonth,
+        birthDay:   bd.birthDay,
         nullifierSeed:    state.nullifierSeed,
         thresholdYear:    threshold.year,
         thresholdMonth:   threshold.month,
@@ -339,6 +396,18 @@ function initStep3() {
         upperYear:  upper?.year  ?? 0,
         upperMonth: upper?.month ?? 0,
         upperDay:   upper?.day   ?? 0,
+        nationalityCode,
+        genderCode,
+        namePart1,
+        namePart2,
+        refYear,
+        refMonth,
+        refDay,
+        revealBirthdate,
+        revealAge,
+        revealNationality,
+        revealGender,
+        revealName,
         onStatus:   setS,
       });
 
@@ -349,6 +418,7 @@ function initStep3() {
         attestation:   state.attestation,
         nullifierSeed: state.nullifierSeed,
         createdAt:     Date.now(),
+        disclosed,
       };
       const id = await saveCredential(credential);
       state.credential = { ...credential, id };
@@ -363,13 +433,24 @@ function initStep3() {
       if (summary) {
         const nullFp = nullifier.slice(0, 10) + '...' + nullifier.slice(-8);
         const proofBytes = proof.length.toLocaleString();
-        summary.innerHTML = `
+        let html = `
           <div class="proof-summary-row"><span class="proof-summary-label">Threshold</span><span class="proof-summary-value">${ageRangeLabel}</span></div>
           <div class="proof-summary-row"><span class="proof-summary-label">Credential ID</span><span class="proof-summary-value mono-accent">${nullFp}</span></div>
           <div class="proof-summary-row"><span class="proof-summary-label">Proof size</span><span class="proof-summary-value">${proofBytes} bytes</span></div>
           <div class="proof-summary-row"><span class="proof-summary-label">Public inputs</span><span class="proof-summary-value">${publicInputs.length} fields</span></div>
           <div class="proof-summary-row"><span class="proof-summary-label">Proof time</span><span class="proof-summary-value">${proofTime}s</span></div>
         `;
+        if (disclosed && Object.keys(disclosed).length > 0) {
+          html += '<div style="margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">';
+          html += '<div class="proof-summary-row"><span class="proof-summary-label" style="font-weight:700">Disclosed fields</span><span class="proof-summary-value"></span></div>';
+          if (disclosed.birthdate) html += `<div class="proof-summary-row"><span class="proof-summary-label">Birthdate</span><span class="proof-summary-value">${MONTHS[disclosed.birthdate.month - 1]} ${disclosed.birthdate.day}, ${disclosed.birthdate.year}</span></div>`;
+          if (disclosed.age != null) html += `<div class="proof-summary-row"><span class="proof-summary-label">Age</span><span class="proof-summary-value">${disclosed.age}</span></div>`;
+          if (disclosed.nationality) html += `<div class="proof-summary-row"><span class="proof-summary-label">Nationality</span><span class="proof-summary-value">${disclosed.nationality}</span></div>`;
+          if (disclosed.gender) html += `<div class="proof-summary-row"><span class="proof-summary-label">Gender</span><span class="proof-summary-value">${disclosed.gender}</span></div>`;
+          if (disclosed.name) html += `<div class="proof-summary-row"><span class="proof-summary-label">Name</span><span class="proof-summary-value">${disclosed.name}</span></div>`;
+          html += '</div>';
+        }
+        summary.innerHTML = html;
         summary.hidden = false;
       }
 
@@ -508,7 +589,7 @@ async function enterShowMode() {
       qrCountdownInterval = null;
       if (state.qrTimer) { state.qrTimer.cancel(); state.qrTimer = null; }
       if (canvas) fillStaticNoise(canvas);
-      // Replace the whole countdown line — avoids "Expires in Used"
+      // Replace the whole countdown line - avoids "Expires in Used"
       const countWrap = $('qr-countdown')?.parentElement;
       if (countWrap) countWrap.innerHTML = `<strong>${reason}</strong>`;
       if (msBtn) msBtn.hidden = true;
@@ -654,12 +735,12 @@ async function handleVerification(payload) {
 
     const verifyTime = ((performance.now() - verifyStart) / 1000).toFixed(1);
     if (result.verified) {
-      showVerifyResult(true, result.ageRangeLabel ?? payload.ageRangeLabel, payload.attestation ?? null, result.nullifier ?? null, verifyTime);
+      showVerifyResult(true, result.ageRangeLabel ?? payload.ageRangeLabel, payload.attestation ?? null, result.nullifier ?? null, verifyTime, result.disclosed ?? null);
     } else {
-      showVerifyResult(false, result.reason ?? 'Verification failed', null, null, verifyTime);
+      showVerifyResult(false, result.reason ?? 'Verification failed', null, null, verifyTime, null);
     }
   } catch (err) {
-    // Fallback: local proof verification (no nullifier check) — only for v1 payloads
+    // Fallback: local proof verification (no nullifier check) - only for v1 payloads
     if (payload.version !== 2 && payload.proof) {
       try {
         const { verifyProofLocally } = await import('./zk.js');
@@ -674,7 +755,7 @@ async function handleVerification(payload) {
   }
 }
 
-async function showVerifyResult(ok, label, attestation, nullifier, verifyTime) {
+async function showVerifyResult(ok, label, attestation, nullifier, verifyTime, disclosed) {
   const panel = $('verify-result');
   const icon  = $('result-icon');
   const text  = $('result-text');
@@ -699,6 +780,24 @@ async function showVerifyResult(ok, label, attestation, nullifier, verifyTime) {
     }
     if (verifyTime) statusParts.push(`Verified in ${verifyTime}s`);
     $('attestation-status').textContent = statusParts.join(' \u00b7 ');
+  }
+
+  // Show disclosed fields
+  const discEl = $('verify-disclosed');
+  if (discEl) {
+    if (ok && disclosed && Object.keys(disclosed).length > 0) {
+      let html = '';
+      if (disclosed.birthdate) html += `<div class="disclosed-field-row"><span class="disclosed-field-label">Birthdate</span><span class="disclosed-field-value">${MONTHS[disclosed.birthdate.month - 1]} ${disclosed.birthdate.day}, ${disclosed.birthdate.year}</span></div>`;
+      if (disclosed.age != null) html += `<div class="disclosed-field-row"><span class="disclosed-field-label">Age</span><span class="disclosed-field-value">${disclosed.age}</span></div>`;
+      if (disclosed.nationality) html += `<div class="disclosed-field-row"><span class="disclosed-field-label">Nationality</span><span class="disclosed-field-value">${disclosed.nationality}</span></div>`;
+      if (disclosed.gender) html += `<div class="disclosed-field-row"><span class="disclosed-field-label">Gender</span><span class="disclosed-field-value">${disclosed.gender}</span></div>`;
+      if (disclosed.name) html += `<div class="disclosed-field-row"><span class="disclosed-field-label">Name</span><span class="disclosed-field-value">${disclosed.name}</span></div>`;
+      discEl.innerHTML = html;
+      discEl.hidden = false;
+    } else {
+      discEl.hidden = true;
+      discEl.innerHTML = '';
+    }
   }
 
   // Show credential ID for successful verifications
@@ -726,6 +825,8 @@ function resetVerifyPanel() {
   if (scanBtns) scanBtns.hidden = false;
   const record = $('verify-record');
   if (record) record.hidden = true;
+  const discEl = $('verify-disclosed');
+  if (discEl) { discEl.hidden = true; discEl.innerHTML = ''; }
 }
 
 // ── Dark / light mode ─────────────────────────────────────────────────────────

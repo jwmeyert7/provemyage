@@ -13,7 +13,7 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy':   'same-origin',
     },
-    // Proxy /api/* to the backend — phone uses same-origin HTTPS, no CORS needed
+    // Proxy /api/* to the backend - phone uses same-origin HTTPS, no CORS needed
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
@@ -30,7 +30,7 @@ export default defineConfig({
   },
 
   // Let Vite pre-bundle these so esbuild converts @aztec/bb.js (a webpack CJS
-  // bundle) to proper ESM — without this the browser throws "exports is not
+  // bundle) to proper ESM - without this the browser throws "exports is not
   // defined" and the entire module graph fails to load.
   optimizeDeps: {
     // Pre-bundle the high-level packages (converts @aztec/bb.js CJS→ESM)
