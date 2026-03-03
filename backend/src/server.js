@@ -23,12 +23,19 @@ const app  = express();
 const PORT = process.env.PORT ?? 3001;
 
 // ── Middleware ──────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
-  .split(',').map(s => s.trim());
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',').map(s => s.trim()).filter(Boolean);
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // Allow no-origin requests (curl, server-to-server)
+    if (!origin) return cb(null, true);
+    // Allow all localhost/LAN origins in development
+    if (origin.match(/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?$/)) return cb(null, true);
+    // Allow Vercel deployments
+    if (origin.endsWith('.vercel.app')) return cb(null, true);
+    // Allow explicitly configured origins
+    if (allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   methods: ['GET', 'POST'],
@@ -84,7 +91,7 @@ app.post('/verify', async (req, res) => {
   }
 
   // ── Timestamp freshness check ───────────────────────────────────────────
-  const TTL = Number(process.env.PROOF_TTL_SECONDS ?? 60);
+  const TTL = Number(process.env.PROOF_TTL_SECONDS ?? 300);
   const age = Math.floor(Date.now() / 1000) - timestamp;
   if (age < 0 || age > TTL) {
     return res.status(400).json({ error: `Proof expired or future-dated (age=${age}s, max=${TTL}s)` });

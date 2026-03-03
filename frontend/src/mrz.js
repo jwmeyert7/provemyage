@@ -31,7 +31,9 @@ function validateCD(field, digit) {
 //  [2-4]  Issuing state (3 chars)
 //  [5-43] Name: SURNAME<<GIVEN<NAMES<<<...
 function parseLine1(line) {
-  const nameField = line.slice(5).replace(/<+$/, ''); // trim trailing fillers
+  // OCR frequently misreads '<' filler as 'L' - correct runs of 3+ 'L'
+  const corrected = line.replace(/L{3,}/g, m => '<'.repeat(m.length));
+  const nameField = corrected.slice(5).replace(/<+$/, '');
   const parts = nameField.split('<<');
   const surname    = (parts[0] || '').replace(/</g, ' ').trim();
   const givenNames = (parts.slice(1).join(' ') || '').replace(/</g, ' ').trim();

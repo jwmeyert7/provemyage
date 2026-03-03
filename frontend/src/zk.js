@@ -204,49 +204,66 @@ export async function generateAgeProof({
   try {
     const result = await noir.execute(inputs);
     witness = result.witness;
-    returnValues = result.returnValue; // [Field; 9] array
+
+    // noir_js may return [Field; 9] as a flat array or nested - normalize
+    let rv = result.returnValue;
+    console.log('[zk] raw returnValue:', JSON.stringify(rv));
+    if (rv && !Array.isArray(rv)) rv = [rv];
+    else if (rv && rv.length === 1 && Array.isArray(rv[0])) rv = rv[0];
+    returnValues = rv;
+    console.log('[zk] parsed returnValues:', returnValues?.length, 'elements');
   } catch (err) {
     throw new Error(`Witness generation failed: ${err.message}`);
   }
 
-  if (onStatus) onStatus('Proving… (this takes 30-60 seconds)');
+  if (onStatus) onStatus('Proving... (this takes 30-60 seconds)');
 
   let proof, publicInputs;
   try {
     ({ proof, publicInputs } = await backend.generateProof(witness));
+    console.log('[zk] publicInputs:', publicInputs.length, 'elements');
   } catch (err) {
     throw new Error(`Proof generation failed: ${err.message}`);
   }
 
-  // Parse the return values: [nullifier, birth_y, birth_m, birth_d, age, nationality, gender, name1, name2]
-  const nullifier = returnValues?.[0] ?? publicInputs[publicInputs.length - 1];
+  // The 9 return values (public outputs) appear at the start of publicInputs
+  // in Barretenberg. Use them as primary source, with returnValues as fallback.
+  const rv = returnValues && returnValues.length === 9 ? returnValues : publicInputs.slice(0, 9);
+  console.log('[zk] using rv source:', returnValues?.length === 9 ? 'returnValues' : 'publicInputs[0:9]');
+
+  const nullifier = rv[0];
 
   // Extract disclosed fields from return values
   const disclosed = {};
-  if (revealBirthdate && returnValues) {
-    const y = Number(BigInt(returnValues[1]));
-    const m = Number(BigInt(returnValues[2]));
-    const d = Number(BigInt(returnValues[3]));
-    if (y > 0) disclosed.birthdate = { year: y, month: m, day: d };
+  try {
+    if (revealBirthdate) {
+      const y = Number(BigInt(rv[1]));
+      const m = Number(BigInt(rv[2]));
+      const d = Number(BigInt(rv[3]));
+      if (y > 0) disclosed.birthdate = { year: y, month: m, day: d };
+    }
+    if (revealAge) {
+      const a = Number(BigInt(rv[4]));
+      if (a > 0) disclosed.age = a;
+    }
+    if (revealNationality) {
+      const n = Number(BigInt(rv[5]));
+      if (n > 0) disclosed.nationality = unpackNationality(n);
+    }
+    if (revealGender) {
+      const g = Number(BigInt(rv[6]));
+      if (g > 0) disclosed.gender = unpackGender(g);
+    }
+    if (revealName) {
+      const n1 = unpackFieldToName(rv[7]);
+      const n2 = unpackFieldToName(rv[8]);
+      const fullName = (n1 + n2).replace(/<<+/g, ', ').replace(/<+/g, ' ').trim();
+      if (fullName) disclosed.name = fullName;
+    }
+  } catch (err) {
+    console.warn('[zk] disclosed field extraction error:', err.message);
   }
-  if (revealAge && returnValues) {
-    const a = Number(BigInt(returnValues[4]));
-    if (a > 0) disclosed.age = a;
-  }
-  if (revealNationality && returnValues) {
-    const n = Number(BigInt(returnValues[5]));
-    if (n > 0) disclosed.nationality = unpackNationality(n);
-  }
-  if (revealGender && returnValues) {
-    const g = Number(BigInt(returnValues[6]));
-    if (g > 0) disclosed.gender = unpackGender(g);
-  }
-  if (revealName && returnValues) {
-    const n1 = unpackFieldToName(returnValues[7]);
-    const n2 = unpackFieldToName(returnValues[8]);
-    const fullName = (n1 + n2).replace(/<<+/g, ', ').replace(/<+/g, ' ').trim();
-    if (fullName) disclosed.name = fullName;
-  }
+  console.log('[zk] disclosed:', JSON.stringify(disclosed));
 
   if (onStatus) onStatus('Proof complete ✓');
 

@@ -41,12 +41,14 @@ async function init() {
 export async function verifyProof({ proof, publicInputs }) {
   await init();
 
+  console.log(`[verifier] proof bytes: ${proof.length}, publicInputs: ${publicInputs.length}`);
   try {
     const proofBytes = Uint8Array.from(proof);
     const isValid = await backend.verifyProof({ proof: proofBytes, publicInputs });
+    console.log(`[verifier] result: ${isValid}`);
     return isValid;
   } catch (err) {
-    console.error('[verifier] verifyProof error:', err.message);
-    return false;
+    console.error('[verifier] verifyProof error:', err.message, err.stack);
+    throw err; // let caller see the actual error
   }
 }
