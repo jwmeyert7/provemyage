@@ -875,6 +875,7 @@
             <span class="cred-summary-label">Generated</span>
             <span class="cred-summary-value" id="cs-generated"></span>
           </div>
+          <div id="cs-disclosed" hidden></div>
           <div class="cred-summary-footer">
             <a id="cs-download" href="#" download="provemyage-credential.txt" style="font-size:.75rem">Download record as .txt</a>
             <span style="margin:0 .5rem;color:var(--border)">|</span>
@@ -919,11 +920,8 @@
         <div class="card-title">🔍 Verify Age Credential</div>
         <div class="card-sub">Scan or upload a ProveMyAge QR code to verify.</div>
 
-        <!-- Verifier config -->
-        <div class="verifier-config">
-          <label for="backend-url-input">Backend URL</label>
-          <input id="backend-url-input" type="url" value="https://provemyage-backend-production.up.railway.app" placeholder="https://your-backend.com" />
-        </div>
+        <!-- Verifier config (hidden - backend URL is baked in) -->
+        <input id="backend-url-input" type="hidden" value="https://provemyage-backend-production.up.railway.app" />
 
         <div class="btn-row" id="verify-scan-btns">
           <button class="btn btn-primary" id="startScanBtn">📷 Scan QR</button>

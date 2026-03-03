@@ -542,6 +542,22 @@ async function enterShowMode() {
     if (idEl)  idEl.textContent  = nullFp;
     if (genEl) genEl.textContent = genDate;
 
+    // Show disclosed fields in credential record
+    const csDisc = $('cs-disclosed');
+    if (csDisc && cred.disclosed && Object.keys(cred.disclosed).length > 0) {
+      const d = cred.disclosed;
+      let html = '<div style="margin-top:.3rem;padding-top:.3rem;border-top:1px solid var(--border)">';
+      html += '<div class="cred-summary-row"><span class="cred-summary-label" style="font-weight:600">Disclosed fields</span><span class="cred-summary-value"></span></div>';
+      if (d.birthdate) html += `<div class="cred-summary-row"><span class="cred-summary-label">Birthdate</span><span class="cred-summary-value">${MONTHS[d.birthdate.month - 1]} ${d.birthdate.day}, ${d.birthdate.year}</span></div>`;
+      if (d.age != null) html += `<div class="cred-summary-row"><span class="cred-summary-label">Age</span><span class="cred-summary-value">${d.age}</span></div>`;
+      if (d.nationality) html += `<div class="cred-summary-row"><span class="cred-summary-label">Nationality</span><span class="cred-summary-value">${d.nationality}</span></div>`;
+      if (d.gender) html += `<div class="cred-summary-row"><span class="cred-summary-label">Gender</span><span class="cred-summary-value">${d.gender}</span></div>`;
+      if (d.name) html += `<div class="cred-summary-row"><span class="cred-summary-label">Name</span><span class="cred-summary-value">${d.name}</span></div>`;
+      html += '</div>';
+      csDisc.innerHTML = html;
+      csDisc.hidden = false;
+    }
+
     if (copyBtn) {
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(cred.nullifier)
@@ -560,12 +576,20 @@ async function enterShowMode() {
         'Generated     : ' + new Date(cred.createdAt).toISOString(),
         'Proof size    : ' + cred.proof.length + ' bytes',
         'Public inputs : ' + cred.publicInputs.length + ' fields',
-        '',
-        'This file is for your personal records.',
-        'The credential ID is the unique nullifier produced by the ZK proof.',
-      ].join('\n');
+      ];
+      if (cred.disclosed && Object.keys(cred.disclosed).length > 0) {
+        const d = cred.disclosed;
+        lines.push('', 'Disclosed fields:');
+        if (d.birthdate) lines.push('  Birthdate   : ' + MONTHS[d.birthdate.month - 1] + ' ' + d.birthdate.day + ', ' + d.birthdate.year);
+        if (d.age != null) lines.push('  Age         : ' + d.age);
+        if (d.nationality) lines.push('  Nationality : ' + d.nationality);
+        if (d.gender) lines.push('  Gender      : ' + d.gender);
+        if (d.name) lines.push('  Name        : ' + d.name);
+      }
+      lines.push('', 'This file is for your personal records.', 'The credential ID is the unique nullifier produced by the ZK proof.');
+      const fileContent = lines.join('\n');
       if (dlLink._blobUrl) URL.revokeObjectURL(dlLink._blobUrl);
-      const blob = new Blob([lines], { type: 'text/plain' });
+      const blob = new Blob([fileContent], { type: 'text/plain' });
       dlLink._blobUrl  = URL.createObjectURL(blob);
       dlLink.href      = dlLink._blobUrl;
       dlLink.download  = 'provemyage-' + cred.ageRangeLabel.replace(/[^a-z0-9]/gi, '') + '-' + Date.now() + '.txt';

@@ -32,11 +32,15 @@ function validateCD(field, digit) {
 //  [5-43] Name: SURNAME<<GIVEN<NAMES<<<...
 function parseLine1(line) {
   // OCR frequently misreads '<' filler as 'L' - correct runs of 3+ 'L'
-  const corrected = line.replace(/L{3,}/g, m => '<'.repeat(m.length));
+  let corrected = line.replace(/L{3,}/g, m => '<'.repeat(m.length));
+  // Also fix isolated 'L' between filler chars (single misread '<')
+  corrected = corrected.replace(/<L</g, '<<<');
   const nameField = corrected.slice(5).replace(/<+$/, '');
   const parts = nameField.split('<<');
   const surname    = (parts[0] || '').replace(/</g, ' ').trim();
-  const givenNames = (parts.slice(1).join(' ') || '').replace(/</g, ' ').trim();
+  let givenNames = (parts.slice(1).join(' ') || '').replace(/</g, ' ').trim();
+  // Strip trailing single-character fragments (OCR noise from filler)
+  givenNames = givenNames.replace(/(\s+[A-Z])+$/, '').trim();
   return { surname, givenNames };
 }
 
