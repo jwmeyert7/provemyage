@@ -525,7 +525,7 @@ async function enterShowMode() {
   if (state.qrTimer) { state.qrTimer.cancel(); state.qrTimer = null; }
   if (qrCountdownInterval) { clearInterval(qrCountdownInterval); qrCountdownInterval = null; }
 
-  const backendUrl = $('backend-url-input')?.value?.trim() || 'http://localhost:3001';
+  const backendUrl = $('backend-url-input')?.value?.trim() || 'https://provemyage-backend-production.up.railway.app';
 
   // Populate credential record panel
   const cred = state.credential;
@@ -703,7 +703,7 @@ async function handleVerification(payload) {
   const verifyStart = performance.now();
   setStatus('verify-status', 'Sending proof to verifier backend...', 'info');
 
-  const backendUrl = $('backend-url-input')?.value?.trim() || 'http://localhost:3001';
+  const backendUrl = $('backend-url-input')?.value?.trim() || 'https://provemyage-backend-production.up.railway.app';
 
   try {
     let body;

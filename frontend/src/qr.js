@@ -47,7 +47,7 @@ export async function renderQR(payload, canvas, opts = {}) {
  * @param {string}            [backendUrl]
  * @returns {{ cancel: Function, expiresAt: number }}
  */
-export async function showCredentialQR(credential, canvas, ttlSeconds = 60, backendUrl = 'http://localhost:3001') {
+export async function showCredentialQR(credential, canvas, ttlSeconds = 60, backendUrl = 'https://provemyage-backend-production.up.railway.app') {
   const { token } = await uploadCredential(credential, backendUrl);
 
   // Compact v2 payload - just the token + age label
